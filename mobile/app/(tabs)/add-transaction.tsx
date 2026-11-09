@@ -6,7 +6,6 @@ import NetInfo from "@react-native-community/netinfo";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router/react-navigation";
-import { usePreventScreenCapture } from "expo-screen-capture";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -973,7 +972,6 @@ function unwrapSavedTransactionData(data: any) {
 
 export default function AddTransactionScreen() {
   const serverClockVersion = useServerClockVersion();
-  usePreventScreenCapture();
 
   const router = useRouter();
   const addTransactionScrollRef = useRef<ScrollView | null>(null);

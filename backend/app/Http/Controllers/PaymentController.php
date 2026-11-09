@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\TransactionUpdated;
 use App\Models\Payment;
 use App\Services\ActivityLogService;
+use App\Services\PaymentReceiptStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +164,7 @@ class PaymentController extends Controller
             'payment_date' => 'required|date',
             'remarks' => 'nullable|string',
             'official_receipt_no' => 'required|digits:7',
+            'official_receipt_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:10240',
         ]);
 
         $validated['official_receipt_no'] = trim($validated['official_receipt_no']);
@@ -171,15 +173,19 @@ class PaymentController extends Controller
         $scope = $validated['payment_scope'] ?? 'single_bill';
         $minimal = $request->boolean('minimal');
 
-        if ($scope === 'selected_bills') {
-            return $this->storeSelectedBillsPayment($validated, $minimal);
-        }
+        $receiptStorage = app(PaymentReceiptStorage::class);
+        $image = $request->hasFile('official_receipt_image')
+            ? $receiptStorage->upload($request->file('official_receipt_image')) : [];
+        $validated = array_merge($validated, $image);
 
-        if ($scope === 'all_bills_per_boat') {
-            return $this->storeBoatPayments($validated, $minimal);
+        try {
+            if ($scope === 'selected_bills') return $this->storeSelectedBillsPayment($validated, $minimal);
+            if ($scope === 'all_bills_per_boat') return $this->storeBoatPayments($validated, $minimal);
+            return $this->storeSingleBillPayment($validated, $minimal);
+        } catch (\Throwable $exception) {
+            $receiptStorage->deleteIfUnused($image['official_receipt_image_public_id'] ?? null);
+            throw $exception;
         }
-
-        return $this->storeSingleBillPayment($validated, $minimal);
     }
 
     private function storeSingleBillPayment(array $validated, bool $minimal = false)
@@ -216,6 +222,8 @@ class PaymentController extends Controller
                 'amount_paid' => $validated['amount_paid'],
                 'status' => 'partial',
                 'official_receipt_no' => trim($validated['official_receipt_no']),
+                'official_receipt_image_url' => $validated['official_receipt_image_url'] ?? null,
+                'official_receipt_image_public_id' => $validated['official_receipt_image_public_id'] ?? null,
                 'payment_method' => $validated['payment_method'] ?? 'cash',
                 'payment_date' => $validated['payment_date'],
                 'remarks' => $validated['remarks'] ?? null,
@@ -247,6 +255,7 @@ class PaymentController extends Controller
                 'bill_id' => $payment->bill_id,
                 'amount_paid' => (float) $payment->amount_paid,
                 'official_receipt_no' => $payment->official_receipt_no,
+                'official_receipt_image_url' => $payment->official_receipt_image_url ?? null,
                 'payment_date' => $payment->payment_date,
                 'payment_method' => $payment->payment_method,
                 'remarks' => $payment->remarks,
@@ -292,6 +301,8 @@ class PaymentController extends Controller
                     'amount_paid' => $bill->balance,
                     'status' => 'partial',
                     'official_receipt_no' => trim($validated['official_receipt_no']),
+                    'official_receipt_image_url' => $validated['official_receipt_image_url'] ?? null,
+                    'official_receipt_image_public_id' => $validated['official_receipt_image_public_id'] ?? null,
                     'payment_method' => $validated['payment_method'] ?? 'cash',
                     'payment_date' => $validated['payment_date'],
                     'remarks' => $validated['remarks'] ?? null,
@@ -328,6 +339,7 @@ class PaymentController extends Controller
                     'bill_id' => $payment['bill_id'],
                     'amount_paid' => $payment['amount_paid'],
                     'official_receipt_no' => $payment['official_receipt_no'],
+                    'official_receipt_image_url' => $payment['official_receipt_image_url'],
                     'payment_date' => $payment['payment_date'],
                     'payment_method' => $payment['payment_method'],
                     'remarks' => $payment['remarks'],
@@ -394,6 +406,8 @@ class PaymentController extends Controller
                     'amount_paid' => $entry['amount_paid'],
                     'status' => 'partial',
                     'official_receipt_no' => trim($validated['official_receipt_no']),
+                    'official_receipt_image_url' => $validated['official_receipt_image_url'] ?? null,
+                    'official_receipt_image_public_id' => $validated['official_receipt_image_public_id'] ?? null,
                     'payment_method' => $validated['payment_method'] ?? 'cash',
                     'payment_date' => $validated['payment_date'],
                     'remarks' => $validated['remarks'] ?? null,
@@ -430,6 +444,7 @@ class PaymentController extends Controller
                     'bill_id' => $payment['bill_id'],
                     'amount_paid' => $payment['amount_paid'],
                     'official_receipt_no' => $payment['official_receipt_no'],
+                    'official_receipt_image_url' => $payment['official_receipt_image_url'],
                     'payment_date' => $payment['payment_date'],
                     'payment_method' => $payment['payment_method'],
                     'remarks' => $payment['remarks'],
@@ -486,6 +501,7 @@ class PaymentController extends Controller
         $validated = $request->validate([
             'official_receipt_no' => 'required|digits:7',
             'remarks' => 'nullable|string',
+            'official_receipt_image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:10240',
         ]);
 
         $payment = Payment::query()->findOrFail($id);
@@ -499,10 +515,25 @@ class PaymentController extends Controller
             $this->ensureOfficialReceiptNoAvailable($validated['official_receipt_no'], $payment->payment_id);
         }
 
-        $payment->update([
-            'official_receipt_no' => $validated['official_receipt_no'],
-            'remarks' => $validated['remarks'] ?? null,
-        ]);
+        $receiptStorage = app(PaymentReceiptStorage::class);
+        $image = $request->hasFile('official_receipt_image')
+            ? $receiptStorage->upload($request->file('official_receipt_image')) : [];
+        $previousPublicId = null;
+        try {
+            DB::transaction(function () use ($payment, $validated, $image, &$previousPublicId) {
+                $locked = Payment::whereKey($payment->payment_id)->lockForUpdate()->firstOrFail();
+                $previousPublicId = $locked->official_receipt_image_public_id;
+                $locked->update(array_merge([
+                    'official_receipt_no' => $validated['official_receipt_no'],
+                    'remarks' => $validated['remarks'] ?? null,
+                ], $image));
+            });
+        } catch (\Throwable $exception) {
+            $receiptStorage->deleteIfUnused($image['official_receipt_image_public_id'] ?? null);
+            throw $exception;
+        }
+        $payment->refresh();
+        if ($image) $receiptStorage->deleteIfUnused($previousPublicId);
 
         $record = $this->paymentRecordQuery()
             ->where('p.payment_id', $payment->payment_id)
@@ -522,6 +553,8 @@ class PaymentController extends Controller
             ]
         );
 
+        if ($image) $changeDetails .= ($changeDetails !== '' ? '; ' : '') . 'replaced OR image';
+
         app(ActivityLogService::class)->log(
             action: 'UPDATE',
             module: 'Payments',
@@ -536,6 +569,7 @@ class PaymentController extends Controller
                 'bill_id' => $record->bill_id,
                 'amount_paid' => (float) $record->amount_paid,
                 'official_receipt_no' => $record->official_receipt_no,
+                'official_receipt_image_url' => $record->official_receipt_image_url ?? null,
                 'payment_date' => $record->payment_date,
                 'payment_method' => $record->payment_method,
                 'remarks' => $record->remarks,
@@ -741,6 +775,7 @@ class PaymentController extends Controller
                     'payment_id' => $payment->payment_id,
                     'payment_reference' => $payment->payment_reference_no,
                     'official_receipt_no' => $payment->official_receipt_no,
+                    'official_receipt_image_url' => $payment->official_receipt_image_url ?? null,
                     'payment_date' => $payment->payment_date,
                     'amount_paid' => (float) $payment->amount_paid,
                     'payment_method' => $payment->payment_method,
@@ -762,6 +797,7 @@ class PaymentController extends Controller
             'payment_id' => $payment->payment_id,
             'payment_reference' => $paymentReference,
             'official_receipt_no' => $payment->official_receipt_no,
+            'official_receipt_image_url' => $payment->official_receipt_image_url ?? null,
             'bill_id' => $payment->bill_id,
             'bill_reference' => $billReference,
             'boat_id' => $payment->boat_id,

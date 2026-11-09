@@ -37,6 +37,7 @@ import SuperArchived from "./pages/rbac/archived";
 import SuperManageAccounts from "./pages/rbac/manage-accounts";
 import SuperActivityLogs from "./pages/rbac/activity-logs";
 import SuperSetFees from "./pages/rbac/set-fees";
+import LanguagePreferenceBridge from "./components/LanguagePreferenceBridge";
 
 const RequireAuth = ({ children, allowedRoles }) => {
   const user = getStoredUser();
@@ -225,6 +226,7 @@ const App = () => {
 
   return (
     <Router>
+      <LanguagePreferenceBridge />
       {/* Route pages stay focused on screen rendering and navigation. */}
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />

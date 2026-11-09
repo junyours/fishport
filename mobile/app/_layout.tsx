@@ -3,10 +3,10 @@ import { AntDesign } from "@expo/vector-icons";
 import { Montserrat_400Regular } from "@expo-google-fonts/montserrat/400Regular";
 import { Montserrat_600SemiBold } from "@expo-google-fonts/montserrat/600SemiBold";
 import { Montserrat_800ExtraBold } from "@expo-google-fonts/montserrat/800ExtraBold";
-import { Stack, router } from "expo-router";
+import { SplashScreen, Stack, router } from "expo-router";
 import { useFonts } from "expo-font";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Pressable, Text, View } from "react-native";
+import { AppState, Pressable, Text, View } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { hasServerTime, syncServerClock } from "../utils/serverClock";
 import { useServerClockVersion } from "../utils/useServerClockVersion";
@@ -25,6 +25,9 @@ import { startMasterDataRealtime } from "../utils/realtimeMasterData";
 import { startTransactionLockRealtime } from "../utils/realtimeTransactionLock";
 import { startTransactionsRealtime } from "../utils/realtimeTransactions";
 import "@/global.css";
+
+// Keep the native logo visible until startup is ready or an error needs attention.
+void SplashScreen.preventAutoHideAsync().catch(console.warn);
 
 const FORCED_LOGOUT_MESSAGE = "System error, your account will be logged out.";
 
@@ -58,6 +61,8 @@ const currentUserHasAffectedRole = (record: Record<string, unknown> | null | und
 export default function RootLayout() {
   const serverClockVersion = useServerClockVersion();
   const [clockSyncFailed, setClockSyncFailed] = useState(false);
+  const [clockRetryPending, setClockRetryPending] = useState(false);
+  const serverTimeReady = hasServerTime();
   const showToast = useToastStore((state) => state.showToast);
   const triggerHistoryRefresh = useHistoryStore((state) => state.triggerRefresh);
   const addSyncedTransactions = useHistoryStore((state) => state.addSyncedTransactions);
@@ -83,6 +88,12 @@ export default function RootLayout() {
     Montserrat_600SemiBold,
     Montserrat_800ExtraBold,
   });
+
+  useEffect(() => {
+    if (fontsLoaded && (serverTimeReady || clockSyncFailed)) {
+      void SplashScreen.hideAsync().catch(console.warn);
+    }
+  }, [fontsLoaded, serverTimeReady, clockSyncFailed]);
 
   callbacksRef.current = {
     addSyncedTransactions,
@@ -348,25 +359,24 @@ export default function RootLayout() {
     });
   }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || (!serverTimeReady && !clockSyncFailed)) {
     return null;
   }
 
-  if (!hasServerTime()) {
+  if (!serverTimeReady) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 32, backgroundColor: "white" }}>
-        {!clockSyncFailed && <ActivityIndicator size="large" color="#2563EB" />}
         <Text style={{ marginTop: 16, textAlign: "center", color: "#334155" }}>
-          {clockSyncFailed ? "Unable to connect to the server. Please check your connection and try again." : "Connecting to the server..."}
+          Unable to connect to the server. Please check your connection and try again.
         </Text>
-        {clockSyncFailed && (
-          <Pressable style={{ marginTop: 20, padding: 12 }} onPress={() => {
-            setClockSyncFailed(false);
-            void syncServerClock(true).then((synced) => setClockSyncFailed(!synced));
-          }}>
-            <Text style={{ color: "#2563EB", fontWeight: "600" }}>Try again</Text>
-          </Pressable>
-        )}
+        <Pressable disabled={clockRetryPending} style={{ marginTop: 20, padding: 12, opacity: clockRetryPending ? 0.6 : 1 }} onPress={() => {
+          setClockRetryPending(true);
+          void syncServerClock(true)
+            .then((synced) => setClockSyncFailed(!synced))
+            .finally(() => setClockRetryPending(false));
+        }}>
+          <Text style={{ color: "#2563EB", fontWeight: "600" }}>{clockRetryPending ? "Trying again..." : "Try again"}</Text>
+        </Pressable>
       </View>
     );
   }

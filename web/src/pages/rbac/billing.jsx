@@ -55,6 +55,8 @@ import Spinner from "../../components/Spinner";
 import NoDataFound from "../../components/NoDataFound";
 import { adjustTodayCollection, invalidateTodayCollection } from "../../utils/remittanceCollectionCache";
 import { parseMoneyValue } from "../../utils/money";
+import PaymentReceiptUpload from "../../components/PaymentReceiptUpload";
+import { savePaymentRequest } from "../../lib/paymentReceipt";
 
 const FONT = "'Montserrat', sans-serif";
 const PAGE_SIZE = 10;
@@ -1222,6 +1224,7 @@ const RecordPaymentModal = ({
               <Input value={form.official_receipt_no} onChange={(event) => onChange({ official_receipt_no: normalizeOfficialReceiptNo(event.target.value) })} placeholder="Enter official receipt number" error={Boolean(fieldErrors.official_receipt_no?.[0])} />
               {fieldErrors.official_receipt_no?.[0] ? <ErrorMessage>{fieldErrors.official_receipt_no[0]}</ErrorMessage> : null}
             </div>
+            <PaymentReceiptUpload file={form.official_receipt_image} disabled={saving} error={fieldErrors.official_receipt_image?.[0]} onChange={(file) => onChange({ official_receipt_image: file })} />
             <div>
               <Label required>Amount (₱)</Label>
               <Input value={form.amount_paid} onChange={(event) => onChange({ amount_paid: event.target.value })} placeholder="0.00" error={Boolean(fieldErrors.amount_paid?.[0])} />
@@ -1359,6 +1362,7 @@ const EditPaymentModal = ({ open, payment, form, errors, saving, onClose, onChan
           />
           {errors.official_receipt_no ? <ErrorMessage>{errors.official_receipt_no}</ErrorMessage> : null}
         </div>
+        <PaymentReceiptUpload file={form.official_receipt_image} existingUrl={payment.official_receipt_image_url} disabled={saving} error={errors.official_receipt_image} onChange={(file) => onChange({ official_receipt_image: file })} />
         <div>
           <Label>Remarks</Label>
           <textarea
@@ -1431,6 +1435,12 @@ const PaymentDetailsDrawer = ({ payment, open, onClose }) => {
           <DrawerInfoCard label="Amount Paid" value={formatMoney(payment.amount_paid)} />
           <DrawerInfoCard label="Balance Due" value={formatMoney(payment.balance)} />
         </div>
+        {payment.official_receipt_image_url ? <div className="mt-3 rounded-[10px] border border-slate-200 p-3">
+          <p className="mb-2 mt-0 text-[12px] font-semibold text-slate-600">OR Image</p>
+          <a href={payment.official_receipt_image_url} target="_blank" rel="noopener noreferrer">
+            <img src={payment.official_receipt_image_url} alt="Official receipt image" className="max-h-64 w-full rounded-lg object-contain" />
+          </a>
+        </div> : null}
       </DrawerSection>
 
       <DrawerSection
@@ -1606,6 +1616,7 @@ const patchBillingRecordInCache = (queryClient, nextBill) => {
 };
 
 const getInitialPaymentModalForm = (bill = null) => ({
+  official_receipt_image: null,
   bill_id: bill?.bill_id ? String(bill.bill_id) : "",
   boat_id: bill?.boat_id ? String(bill.boat_id) : "",
   bill_ids: bill?.bill_id ? [String(bill.bill_id)] : [],
@@ -2681,9 +2692,7 @@ const SuperBilling = () => {
       if (isTransactionLocked) {
         throw new Error(transactionLockMessage);
       }
-      const response = await api.post("/payments", payload, {
-        params: { minimal: 1 },
-      });
+      const response = await savePaymentRequest(api, payload);
       return response.data;
     },
     onSuccess: (response, variables) => {
@@ -2732,9 +2741,7 @@ const SuperBilling = () => {
         throw new Error(transactionLockMessage);
       }
 
-      const response = await api.put(`/payments/${id}`, payload, {
-        params: { minimal: 1 },
-      });
+      const response = await savePaymentRequest(api, payload, id);
       return response.data;
     },
     onSuccess: () => {
@@ -2754,6 +2761,9 @@ const SuperBilling = () => {
 
       if (responseErrors.official_receipt_no?.[0]) {
         nextErrors.official_receipt_no = responseErrors.official_receipt_no[0];
+      }
+      if (responseErrors.official_receipt_image?.[0]) {
+        nextErrors.official_receipt_image = responseErrors.official_receipt_image[0];
       }
 
       setEditPaymentErrors(nextErrors);
@@ -2786,6 +2796,7 @@ const SuperBilling = () => {
     setEditPaymentForm({
       official_receipt_no: normalizeOfficialReceiptNo(payment?.official_receipt_no || ""),
       remarks: payment?.remarks || "",
+      official_receipt_image: null,
     });
     setEditPaymentErrors({});
   };
@@ -2830,11 +2841,12 @@ const SuperBilling = () => {
       remarks: editingPayment.remarks || "",
     };
 
-    if (JSON.stringify(payload) === JSON.stringify(original)) {
+    if (!editPaymentForm.official_receipt_image && JSON.stringify(payload) === JSON.stringify(original)) {
       showNoChangesToast();
       return;
     }
 
+    if (editPaymentForm.official_receipt_image) payload.official_receipt_image = editPaymentForm.official_receipt_image;
     updatePaymentMutation.mutate({ id: editingPayment.payment_id, payload });
   };
 
@@ -3024,6 +3036,7 @@ const SuperBilling = () => {
       boat_id: paymentModalScope === "selected_bills" ? Number(paymentModalForm.boat_id) : undefined,
       payment_method: paymentModalForm.payment_method || "cash",
       official_receipt_no: normalizeOfficialReceiptNo(paymentModalForm.official_receipt_no),
+      ...(paymentModalForm.official_receipt_image ? { official_receipt_image: paymentModalForm.official_receipt_image } : {}),
       payment_date: paymentModalForm.payment_date,
       amount_paid: amountPaid,
       remarks: paymentModalForm.remarks || null,

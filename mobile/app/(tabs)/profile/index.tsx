@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useProfileStore } from "../../../store/profileStore";
 import SignOutModal from "../../../components/SignOutModal";
 import { getAuthSession, getAuthToken } from "../../../api/auth";
@@ -9,6 +9,9 @@ import { Pressable, RefreshControl, ScrollView, StatusBar, Text, View } from "re
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useToastStore } from "../../../store/toastStore";
 import { usePullRefreshIndicator } from "../../../utils/usePullRefreshIndicator";
+import LanguageModal from "../../../components/LanguageModal";
+import { LANGUAGE_OPTIONS, useLanguageStore, type LanguageCode } from "../../../store/languageStore";
+import { translate } from "../../../utils/language";
 
 const profileActions = [
   {
@@ -28,6 +31,14 @@ const profileActions = [
     textColor: "#1A1F36",
   },
   {
+    key: "language",
+    label: "Language",
+    icon: "language-outline" as const,
+    tint: "bg-[#EEF4FF]",
+    iconColor: "#2563EB",
+    textColor: "#1A1F36",
+  },
+  {
     key: "sign-out",
     label: "Sign Out",
     icon: "log-out-outline" as const,
@@ -40,10 +51,25 @@ const profileActions = [
 export default function ProfileScreen() {
   const router = useRouter();
   const [signOutModalVisible, setSignOutModalVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [savingLanguage, setSavingLanguage] = useState(false);
+  const languageSaveRef = useRef(false);
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
   const { isRefreshing, beginRefresh, finishRefresh } = usePullRefreshIndicator();
   const profile = useProfileStore((state) => state);
   const setProfile = useProfileStore((state) => state.setProfile);
   const showToast = useToastStore((state) => state.showToast);
+  const selectLanguage = async (value: LanguageCode) => {
+    if (languageSaveRef.current) return;
+    languageSaveRef.current = true;
+    setSavingLanguage(true);
+    const saved = await setLanguage(value);
+    languageSaveRef.current = false;
+    setSavingLanguage(false);
+    if (saved) setLanguageModalVisible(false);
+    else showToast("error", translate("Unable to save language preference. Please try again.", language));
+  };
 
   const handleRefresh = useCallback(async () => {
     if (!beginRefresh()) return;
@@ -108,124 +134,129 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#1A1F36" />
 
       <SafeAreaView className="flex-1 bg-[#1A1F36]" edges={["top"]}>
-        <View className="h-[28%] bg-[#1A1F36] px-5 pt-3">
-          <View className="flex-row items-center justify-between">
-            <Text
-              className="text-[20px] text-white"
-              style={{ fontFamily: "Montserrat_400Regular" }}
-            >
-              Profile
-            </Text>
-            <Pressable
-              className="h-11 w-11 items-center justify-center"
-              hitSlop={10}
-              onPress={() => openProfileDetails()}
-            >
-              <Ionicons name="create-outline" size={22} color="#FFFFFF" />
-            </Pressable>
-          </View>
-        </View>
-
-        <View
-          className="-mt-20 items-center"
-          style={{ zIndex: 20, elevation: 20 }}
-        >
-          <View className="items-center">
-            <View className="h-[155px] w-[155px] items-center justify-center overflow-hidden rounded-full border-8 border-white bg-[#1A1F36]">
-              {profileInitials ? (
-                <Text
-                  className="text-[54px] text-white"
-                  style={{ fontFamily: "Montserrat_600SemiBold" }}
-                >
-                  {profileInitials}
-                </Text>
-              ) : (
-                <Ionicons name="person-outline" size={70} color="#FFFFFF" />
-              )}
-            </View>
-          </View>
-        </View>
-
         <ScrollView
-          className="-mt-24 flex-1 rounded-t-[20px] bg-[#FFFDFB]"
+          className="flex-1"
           alwaysBounceVertical
-          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 32 }}
+          contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor="#2563EB"
+              tintColor="#FFFFFF"
               colors={["#2563EB"]}
             />
           }
         >
-          <View className="items-center">
-            <Text
-              className="mt-20 text-center text-[24px] text-[#1A1F36]"
-              style={{ fontFamily: "Montserrat_600SemiBold" }}
-            >
-              {displayName}
-            </Text>
-            <Text
-              className="mt-0.5 mb-9 text-center text-[14px] text-[#1A1F36]"
-              style={{ fontFamily: "Montserrat_400Regular" }}
-            >
-              {displayEmail}
-            </Text>
-          </View>
-
-          {profileActions.map((action) => (
-            <View
-              key={action.key}
-              className="mb-4 rounded-[18px] border border-[#ECE8EC] bg-white px-5"
-              style={{
-                boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.06)",
-                elevation: 3,
-              }}
-            >
-              <Pressable
-                className="flex-row items-center justify-between py-5"
-                onPress={() => {
-                  if (action.key === "edit-profile") {
-                    openProfileDetails();
-                  }
-
-                  if (action.key === "change-password") {
-                    openProfileDetails("change-password");
-                  }
-
-                  if (action.key === "sign-out") {
-                    setSignOutModalVisible(true);
-                  }
-                }}
+          <View className="h-[180px] shrink-0 bg-[#1A1F36] px-5 pt-3">
+            <View className="flex-row items-center justify-between">
+              <Text
+                className="text-[20px] text-white"
+                style={{ fontFamily: "Montserrat_400Regular" }}
               >
-                <View className="flex-row items-center">
-                  <View
-                    className={`h-11 w-11 items-center justify-center rounded-full ${action.tint}`}
-                  >
-                    <Ionicons
-                      name={action.icon}
-                      size={20}
-                      color={action.iconColor}
-                    />
-                  </View>
-
-                  <Text
-                    className="ml-4 text-[15px]"
-                    style={{
-                      fontFamily: "Montserrat_400Regular",
-                      color: action.textColor,
-                    }}
-                  >
-                    {action.label}
-                  </Text>
-                </View>
-
-                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                {translate("Profile", language)}
+              </Text>
+              <Pressable
+                className="h-11 w-11 items-center justify-center"
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={translate("Sign Out", language)}
+                onPress={() => setSignOutModalVisible(true)}
+              >
+                <Ionicons name="log-out-outline" size={22} color="#FFFFFF" />
               </Pressable>
             </View>
-          ))}
+          </View>
+
+          <View className="rounded-t-[20px] bg-[#FFFDFB] px-5 pb-6" style={{ flexGrow: 1 }}>
+            <View className="-mt-20 items-center">
+              <View className="h-[155px] w-[155px] items-center justify-center overflow-hidden rounded-full border-8 border-white bg-[#1A1F36]">
+                {profileInitials ? (
+                  <Text
+                    className="text-[54px] text-white"
+                    style={{ fontFamily: "Montserrat_600SemiBold" }}
+                  >
+                    {profileInitials}
+                  </Text>
+                ) : (
+                  <Ionicons name="person-outline" size={70} color="#FFFFFF" />
+                )}
+              </View>
+            </View>
+            <View className="items-center">
+              <Text
+                className="mt-4 text-center text-[24px] text-[#1A1F36]"
+                style={{ fontFamily: "Montserrat_600SemiBold" }}
+              >
+                {displayName}
+              </Text>
+              <Text
+                className="mt-0.5 mb-9 text-center text-[14px] text-[#1A1F36]"
+                style={{ fontFamily: "Montserrat_400Regular" }}
+              >
+                {displayEmail}
+              </Text>
+            </View>
+
+            {profileActions.map((action) => (
+              <View
+                key={action.key}
+                className="mb-4 rounded-[18px] border border-[#ECE8EC] bg-white px-5"
+                style={{
+                  boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.06)",
+                  elevation: 3,
+                }}
+              >
+                <Pressable
+                  className="flex-row items-center justify-between py-5"
+                  onPress={() => {
+                    if (action.key === "edit-profile") {
+                      openProfileDetails();
+                    }
+
+                    if (action.key === "change-password") {
+                      openProfileDetails("change-password");
+                    }
+
+                    if (action.key === "language") {
+                      setLanguageModalVisible(true);
+                    }
+
+                    if (action.key === "sign-out") {
+                      setSignOutModalVisible(true);
+                    }
+                  }}
+                >
+                  <View className="min-w-0 flex-1 flex-row items-center">
+                    <View
+                      className={`h-11 w-11 items-center justify-center rounded-full ${action.tint}`}
+                    >
+                      <Ionicons
+                        name={action.icon}
+                        size={20}
+                        color={action.iconColor}
+                      />
+                    </View>
+
+                    <Text
+                      className="ml-4 flex-1 text-[15px]"
+                      style={{
+                        fontFamily: "Montserrat_400Regular",
+                        color: action.textColor,
+                      }}
+                    >
+                      {translate(action.label, language)}
+                    </Text>
+                  </View>
+
+                  <View className="ml-3 flex-row items-center gap-2">
+                    {action.key === "language" && <Text className="text-[12px] text-[#6F6F82]" style={{ fontFamily: "Montserrat_400Regular" }}>{LANGUAGE_OPTIONS.find((option) => option.value === language)?.label}</Text>}
+                    <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+                  </View>
+                </Pressable>
+              </View>
+            ))}
+          </View>
         </ScrollView>
       </SafeAreaView>
 
@@ -233,6 +264,7 @@ export default function ProfileScreen() {
         visible={signOutModalVisible}
         onClose={() => setSignOutModalVisible(false)}
       />
+      <LanguageModal visible={languageModalVisible} language={language} saving={savingLanguage} onClose={() => setLanguageModalVisible(false)} onSelect={selectLanguage} />
     </View>
   );
 }

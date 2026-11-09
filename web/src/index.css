@@ -98,33 +98,6 @@ html.login-scroll-hide::-webkit-scrollbar {
   }
 }
 
-@media (max-width: 1279px) {
-  .dashboard-overview-grid {
-    display: grid;
-    gap: 1.25rem;
-  }
-
-  .dashboard-overview-row {
-    display: contents;
-  }
-
-  .dashboard-card-cash-received {
-    order: 1;
-  }
-
-  .dashboard-card-receivables {
-    order: 2;
-  }
-
-  .dashboard-card-bill-status {
-    order: 3;
-  }
-
-  .dashboard-card-revenue-quarter {
-    order: 4;
-  }
-}
-
 .hide-scrollbar,
 .ant-modal-body,
 .ant-modal-content,

@@ -1,3 +1,5 @@
+import { useLanguageStore } from "../../store/languageStore";
+
 export function getStoredToken() {
   localStorage.removeItem("token");
   return sessionStorage.getItem("token");
@@ -8,6 +10,7 @@ export function clearStoredAuth() {
   sessionStorage.removeItem("user");
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  useLanguageStore.getState().loadLanguage();
 }
 
 export function getStoredUser() {

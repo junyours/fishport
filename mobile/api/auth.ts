@@ -3,6 +3,7 @@ import { useHomeStore } from "../store/homeStore";
 import { useHistoryStore } from "../store/historyStore";
 import { useProfileStore } from "../store/profileStore";
 import { useMasterDataStore } from "../store/masterDataStore";
+import { useLanguageStore } from "../store/languageStore";
 
 export type AuthUser = {
   user_id?: number;
@@ -33,6 +34,7 @@ export function setAuthSession(session: AuthSession | null) {
   const previousUserId = authSession?.user?.user_id;
   const nextUserId = session?.user?.user_id;
   authSession = session;
+  void useLanguageStore.getState().loadLanguage(session?.user?.user_id ?? null);
   useProfileStore.getState().initProfile(session?.user ?? null);
 
   if (!session || (previousUserId && nextUserId && previousUserId !== nextUserId)) {

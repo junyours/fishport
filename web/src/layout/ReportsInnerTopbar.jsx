@@ -76,6 +76,7 @@ const ReportsInnerTopbar = ({
   const isDailyReport = activeReport === "daily";
   const isRemittanceReport = activeReport === "remittance";
   const isCollectionsReport = activeReport === "collections";
+  const isCollectionDepositReport = activeReport === "collection-deposit";
   const isBillingReport = activeReport === "billing";
   const isMonthlyReport = activeReport === "monthly";
   const isYearlyReport = activeReport === "yearly";
@@ -103,6 +104,7 @@ const ReportsInnerTopbar = ({
     isBanyeraReport ||
     isBfarReport ||
     isCollectionsReport ||
+    isCollectionDepositReport ||
     isRemittanceReport ||
     isBillingReport ||
     isBoatStatementReport ||
@@ -115,7 +117,9 @@ const ReportsInnerTopbar = ({
     isFeesReport;
 
   const activeFilterType =
-    isVehicleTicketReport ||
+    isCollectionDepositReport
+      ? "daily"
+      : isVehicleTicketReport ||
     isVehicleTypesReport ||
     isBoatTypesReport ||
     isFeesReport
@@ -182,7 +186,7 @@ const ReportsInnerTopbar = ({
         <div className="mx-auto flex w-full max-w-[1100px] flex-col items-center justify-center gap-3">
           <div className="flex w-full flex-wrap items-center justify-center gap-2">
             {/* FILTER TYPE */}
-            {!isVehicleTicketReport && !isVehicleTypesReport && !isBoatTypesReport && !isFeesReport && (
+            {!isCollectionDepositReport && !isVehicleTicketReport && !isVehicleTypesReport && !isBoatTypesReport && !isFeesReport && (
               <div className={REPORT_INPUT_WIDTH_CLASS}>
                 <FilterButton
                   width="100%"

@@ -5,6 +5,8 @@ import { AppState, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNotificationStore } from "../../store/notificationStore";
 import { startNotificationsRealtime } from "../../utils/realtimeNotifications";
+import { useLanguageStore } from "../../store/languageStore";
+import { translate } from "../../utils/language";
 
 function NotificationTabIcon({
   color,
@@ -41,6 +43,7 @@ function NoRippleTabButton({ href, ...props }: any) {
 }
 
 export default function TabsLayout() {
+  const language = useLanguageStore((state) => state.language);
   const insets = useSafeAreaInsets();
   const unreadCount = useNotificationStore((state) => state.unreadCount);
   const refreshUnreadCount = useNotificationStore((state) => state.refreshUnreadCount);
@@ -84,7 +87,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: translate("Home", language),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? "home" : "home-outline"}
@@ -97,7 +100,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: translate("History", language),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? "time" : "time-outline"}
@@ -122,7 +125,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: "Notifications",
+          title: translate("Notifications", language),
           tabBarIcon: ({ color, size, focused }) => (
             <NotificationTabIcon
               color={color}
@@ -136,7 +139,7 @@ export default function TabsLayout() {
        <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: translate("Profile", language),
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? "person" : "person-outline"}

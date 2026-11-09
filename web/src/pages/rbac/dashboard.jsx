@@ -24,7 +24,9 @@ import api from "../../api/axios";
 import { useSidebar } from "../../store/sidebarStore";
 import { useDashboardDataQuery } from "../../hooks/useDashboardDataQuery";
 import { getBilledReceivables } from "../../lib/dashboardReceivables";
+import { getTransactionRevenueByPeriod } from "../../lib/dashboardRevenue";
 import { useFiscalYearStore, getFiscalYearOptions } from "../../store/fiscalYearStore";
+import { DashboardDonut, DashboardTargetGauge } from "../../components/DashboardCharts";
 
 const FONT = "'Montserrat', sans-serif";
 const PESO = "\u20B1";
@@ -186,32 +188,32 @@ const StatCard = ({
   active = false,
 }) => (
   <div
-    className={`relative min-w-0 rounded-[10px] border px-4 py-4 sm:px-5 ${
+    className={`relative min-w-0 rounded-[10px] border p-5 ${
       active ? "border-[#2563eb] bg-[#2563eb]" : "border-slate-200 bg-white"
     } ${onTogglePopover ? "cursor-pointer transition-colors" : ""}`}
     onClick={onTogglePopover}
     {...(popoverRootAttribute ? { [popoverRootAttribute]: "" } : {})}
   >
-    <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-4">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2">
       {loading ? (
-        <div className="h-11 w-11 flex-shrink-0 animate-pulse rounded-2xl bg-slate-200 sm:h-12 sm:w-12" />
+        <div className="col-start-2 row-start-1 h-12 w-12 animate-pulse rounded-xl bg-slate-200" />
       ) : (
-        <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl sm:h-12 sm:w-12 ${active ? "bg-white/20" : iconBg}`}>
-          <Icon className={active ? "text-white" : iconColor} style={{ fontSize: 22 }} />
+        <div className={`col-start-2 row-start-1 flex h-12 w-12 items-center justify-center rounded-xl ${active ? "bg-white/20" : iconBg}`}>
+          <Icon className={active ? "text-white" : iconColor} style={{ fontSize: 26 }} />
         </div>
       )}
-      <div className="min-w-[150px] flex-1 pt-1">
+      <div className="contents">
         {loading ? (
           <>
-            <div className="h-[16px] w-32 animate-pulse rounded bg-slate-200" />
-            <div className="mt-2 h-8 w-28 animate-pulse rounded-lg bg-slate-200" />
+            <div className="col-start-1 row-start-1 h-[16px] w-full max-w-32 animate-pulse rounded bg-slate-200" />
+            <div className="col-span-2 row-start-2 h-[clamp(28px,2.4vw,36px)] w-2/3 max-w-48 animate-pulse rounded-lg bg-slate-200" />
           </>
         ) : (
           <>
-            <p className={`m-0 text-[13px] font-medium leading-tight ${active ? "text-white" : "text-slate-500"}`} style={{ fontFamily: FONT }}>
+            <p className={`col-start-1 row-start-1 m-0 text-[13px] font-medium leading-tight ${active ? "text-white" : "text-slate-500"}`} style={{ fontFamily: FONT }}>
               {label}
             </p>
-            <p className={`m-0 mt-0.5 break-words text-[clamp(20px,2.2vw,28px)] font-bold leading-tight ${active ? "text-white" : "text-slate-900"}`}>
+            <p className={`col-span-2 row-start-2 m-0 break-words text-[clamp(22px,2vw,30px)] font-bold leading-tight ${active ? "text-white" : "text-slate-900"}`}>
               {valuePrefix}{fmtN(value, valuePrefix === PESO)}
             </p>
           </>
@@ -299,34 +301,70 @@ const SkeletonBlock = ({ className = "" }) => (
   <div className={`animate-pulse rounded bg-slate-200 ${className}`.trim()} />
 );
 
-const MetricChartSkeleton = ({ chartHeight = "h-[140px]" }) => (
-  <div className="h-full">
-    <div className="mb-3 rounded-[10px] border border-slate-200 bg-white px-6 py-3">
-      <div className="mx-auto h-[16px] w-36 animate-pulse rounded bg-slate-200" />
-      <div className="mx-auto mt-2 h-8 w-44 animate-pulse rounded-lg bg-slate-200" />
+const MetricChartSkeleton = () => (
+  <div aria-hidden="true" className="flex min-h-0 flex-1 flex-col">
+    <div className="mb-1 shrink-0">
+      <SkeletonBlock className="h-4 w-36 max-w-full" />
+      <SkeletonBlock className="mt-1 h-[clamp(32px,3.1vw,41px)] w-48 max-w-full" />
     </div>
-    <div className={`mx-2 animate-pulse rounded-lg bg-slate-200 ${chartHeight}`} />
+    <SkeletonBlock className="-mx-2 min-h-[250px] flex-1 rounded-lg" />
   </div>
 );
 
-const DonutCardSkeleton = ({ labelWidth = "w-28" }) => (
-  <div className="flex flex-col items-center justify-center pt-2">
-    <SkeletonBlock className={`mb-5 h-[16px] ${labelWidth}`} />
-    <div className="relative h-[184px] w-[208px]">
-      <div className="absolute left-[28px] top-[10px] h-[152px] w-[152px] animate-pulse rounded-full bg-slate-200" />
-      <div className="absolute left-[68px] top-[50px] h-[72px] w-[72px] rounded-full bg-white" />
-      <SkeletonBlock className="absolute left-0 top-10 h-4 w-10" />
-      <SkeletonBlock className="absolute right-1 top-5 h-4 w-10" />
-      <SkeletonBlock className="absolute bottom-8 left-1 h-4 w-10" />
-      <SkeletonBlock className="absolute bottom-8 right-1 h-4 w-10" />
+const DonutCardSkeleton = ({ labelWidth = "w-28", itemCount = 4 }) => (
+  <div aria-hidden="true" className="flex h-full min-w-0 flex-col">
+    <SkeletonBlock className={`mx-auto h-4 max-w-full ${labelWidth}`} />
+    <div className="mx-auto my-3 grid h-[224px] w-full max-w-[280px] place-items-center">
+      <div className="relative aspect-square w-full max-w-[204px] animate-pulse rounded-full bg-slate-200">
+        <div className="absolute inset-[18%] flex flex-col items-center justify-center gap-2 rounded-full bg-white">
+          <SkeletonBlock className="h-3 w-9" />
+          <SkeletonBlock className="h-6 w-16 max-w-full" />
+        </div>
+      </div>
+    </div>
+    <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-2.5">
+      {Array.from({ length: itemCount }, (_, index) => (
+        <div key={index} className="flex h-[18px] min-w-0 items-center justify-between gap-2">
+          <SkeletonBlock className="h-3 w-12 max-w-full" />
+          <SkeletonBlock className="h-3 w-6 shrink-0" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const TargetCardSkeleton = () => (
+  <div aria-hidden="true">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5">
+      <div className="col-span-2 flex min-w-0 flex-col items-center gap-1">
+        <SkeletonBlock className="h-[15px] w-28 max-w-full" />
+        <SkeletonBlock className="h-[11px] w-10" />
+      </div>
+      <div className="flex gap-2">
+        <SkeletonBlock className="h-8 w-8 rounded-lg" />
+        <SkeletonBlock className="h-8 w-8 rounded-lg" />
+      </div>
+      <SkeletonBlock className="h-8 w-[72px] rounded-lg" />
+    </div>
+    <div className="relative mx-auto mt-1 h-[184px] w-full max-w-[420px] overflow-hidden">
+      <div className="absolute left-1/2 top-6 aspect-[2/1] w-[calc(100%_-_1rem)] max-w-[280px] -translate-x-1/2 animate-pulse rounded-t-full border-[20px] border-b-0 border-slate-200" />
+      <SkeletonBlock className="absolute bottom-5 left-1/2 h-[30px] w-24 -translate-x-1/2" />
+    </div>
+    <div className="overflow-hidden rounded-[10px] border border-slate-200 divide-y divide-slate-200">
+      {[0, 1].map((row) => (
+        <div key={row} className="flex items-center justify-between gap-4 px-4 py-2">
+          <SkeletonBlock className="h-4 w-14 max-w-full" />
+          <SkeletonBlock className="h-5 w-20 max-w-full" />
+        </div>
+      ))}
     </div>
   </div>
 );
 
 const LineChartSkeleton = () => (
-  <div>
-    <SkeletonBlock className="mx-auto mb-6 h-[16px] w-44" />
-    <div className="h-[240px] animate-pulse rounded-lg bg-slate-200" />
+  <div aria-hidden="true">
+    <SkeletonBlock className="mx-auto mb-4 h-4 w-44 max-w-full" />
+    <SkeletonBlock className="h-[340px] rounded-lg" />
   </div>
 );
 
@@ -514,6 +552,11 @@ const Dashboard = () => {
     setActiveCashMonthIndex(null);
     setActiveReceivableMonthIndex(null);
   }, [selectedYear]);
+
+  const transactionRevenueData = useMemo(
+    () => getTransactionRevenueByPeriod(data ?? {}, Number(selectedYear) || new Date().getFullYear()),
+    [data, selectedYear],
+  );
 
   const {
     boatsRegistered,
@@ -932,12 +975,7 @@ const Dashboard = () => {
       totalTicketCollections: ticketCollections,
       totalVehicleTicketTransactions,
       totalRemittances,
-      totalTransactionRevenue:
-        totalDockingTransactions +
-        totalBanyeraTransactions +
-        totalVehicleTicketTransactions +
-        (data?.penalties ?? []).reduce((sum, penalty) =>
-          getYear(penalty.fiscal_date) === selectedYearNumber ? sum + Number(penalty.amount || 0) : sum, 0),
+      totalTransactionRevenue: transactionRevenueData.total,
       billsStatus: statusItems,
       billsStatusWithPercent: statusItemsWithPercent,
       totalBills: statusItems.reduce((sum, item) => sum + item.value, 0),
@@ -947,7 +985,7 @@ const Dashboard = () => {
       monthlyBanyera,
       monthlyTransactions,
     };
-  }, [data, selectedYear]);
+  }, [data, selectedYear, transactionRevenueData]);
 
   const yearOptions = getFiscalYearOptions();
 
@@ -1541,15 +1579,12 @@ const Dashboard = () => {
       { key: "q4", name: "Q4", months: [9, 10, 11] },
     ];
 
-    const items = quarterConfig.map((quarter) => ({
+    const items = quarterConfig.map((quarter, index) => ({
       ...quarter,
-      value: quarter.months.reduce(
-        (sum, monthIndex) => sum + Number(cashflowData.chart[monthIndex]?.revenue || 0),
-        0,
-      ),
+      value: transactionRevenueData.quarters[index],
     }));
 
-    const total = items.reduce((sum, item) => sum + item.value, 0);
+    const total = transactionRevenueData.total;
 
     return {
       total,
@@ -1559,7 +1594,7 @@ const Dashboard = () => {
         percent: total > 0 ? Math.round((item.value / total) * 100) : 0,
       })),
     };
-  }, [cashflowData.chart]);
+  }, [transactionRevenueData]);
 
   const quarterlyRevenueSeries = useMemo(() => {
     if (quarterlyRevenue.total > 0) return quarterlyRevenue.items.map((item) => item.value);
@@ -3213,10 +3248,13 @@ const Dashboard = () => {
 
             {/* Stat cards */}
             <div className="mb-6 space-y-5">
-              {[STATS.slice(0, 3), STATS.slice(3)].map((rowStats, rowIndex) => (
+              {[
+                STATS.filter((card) => ["revenue", "remittances", "boats", "visiting_boats"].includes(card.key)),
+                STATS.filter((card) => ["docking", "banyera", "tickets"].includes(card.key)),
+              ].map((rowStats, rowIndex) => (
                 <div
                   key={`stat-row-${rowIndex}`}
-                  className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${rowIndex === 0 ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}
+                  className={`grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 ${rowIndex === 0 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
                 >
                   {rowStats.map((card) => (
                     <StatCard
@@ -3296,42 +3334,139 @@ const Dashboard = () => {
               ))}
             </div>
 
-            {/* Revenue + Bill Status + Monthly Target */}
-            <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.5fr)_390px]">
-              <div className="order-2">
-                <section className="dashboard-card-monthly-target h-[276px] w-full overflow-hidden rounded-[10px] border border-slate-200 bg-white px-4 pb-3 pt-3 xl:ml-auto xl:max-w-[390px]">
+            {/* Cash received and receivables */}
+            <div className="dashboard-chart-layout space-y-5">
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <section className="dashboard-card-cash-received flex min-w-0 flex-col rounded-[10px] border border-slate-200 bg-white px-5 pt-5 pb-3 h-full min-h-[360px]">
                   {showInitialSkeleton ? (
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-shrink-0 items-center gap-2">
-                          <SkeletonBlock className="h-8 w-8 rounded-lg border border-slate-200" />
-                          <SkeletonBlock className="h-8 w-8 rounded-lg border border-slate-200" />
-                        </div>
-                        <div className="min-w-0 flex-1 pt-0.5">
-                          <SkeletonBlock className="mx-auto h-[14px] w-24" />
-                          <SkeletonBlock className="mx-auto mt-0.5 h-[10px] w-10" />
-                        </div>
-                        <SkeletonBlock className="h-8 w-[78px] flex-shrink-0 rounded-lg border border-slate-200" />
-                      </div>
-                      <div className="mt-1 flex flex-col items-center">
-                        <div className="relative h-[132px] w-full overflow-hidden">
-                          <div className="absolute left-1/2 top-[-2px] h-[118px] w-[236px] -translate-x-1/2 rounded-t-full bg-slate-200" />
-                          <SkeletonBlock className="absolute bottom-[16px] left-1/2 h-[22px] w-20 -translate-x-1/2" />
-                        </div>
-                      </div>
-                      <div className="overflow-hidden rounded-[10px] border border-slate-200">
-                        {Array.from({ length: 2 }).map((_, index) => (
-                          <div key={`monthly-target-skeleton-${index}`} className="flex items-center justify-between px-4 py-2.5">
-                            <SkeletonBlock className="h-[16px] w-20" />
-                            <SkeletonBlock className="h-5 w-28" />
-                          </div>
-                        ))}
-                      </div>
+                    <MetricChartSkeleton />
+                  ) : (
+                  <>
+                  <div className="mb-1 shrink-0">
+                    <div className="w-full">
+                      <p
+                        className="m-0 text-[13px] font-medium leading-tight text-slate-500"
+                        style={{ fontFamily: FONT }}
+                      >
+                        Total Cash Received
+                      </p>
+                      <p
+                        className="m-0 mt-1 break-words text-[clamp(26px,2.6vw,34px)] font-bold leading-tight text-slate-900"
+                        style={{ fontFamily: FONT }}
+                      >
+                        {`\u20B1${fmt(cashflowData.totalRevenue)}`}
+                      </p>
                     </div>
+                  </div>
+
+                  <div className="relative -mx-2 min-h-[250px] flex-1">
+                    {activeCashMonthIndex !== null && cashflowData.chart[activeCashMonthIndex] ? (
+                      <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+                        <p className="m-0 text-[12px] font-bold text-black">
+                          {cashflowData.chart[activeCashMonthIndex].month}
+                        </p>
+                        <p className="m-0 mt-1 text-[15px] font-medium leading-none text-black">
+                          {`\u20B1${fmt(cashflowData.chart[activeCashMonthIndex].revenue)}`}
+                        </p>
+                      </div>
+                    ) : null}
+                    <ReactApexChart
+                      className="absolute inset-0"
+                      type="bar"
+                      series={cashReceivedSeries}
+                      options={cashReceivedChartOptions}
+                      width="100%"
+                      height="100%"
+                    />
+                    <div className="absolute inset-x-[18px] bottom-[8px] z-20 flex h-[30px]">
+                      {cashflowData.chart.map((item, index) => (
+                        <button
+                          key={`cash-month-${item.month}`}
+                          type="button"
+                          aria-label={`Show cash received for ${item.month}`}
+                          onClick={() =>
+                            setActiveCashMonthIndex((current) =>
+                              current === index ? null : index,
+                            )
+                          }
+                          className="h-full flex-1 bg-transparent"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  </>
+                  )}
+                </section>
+                <section className="dashboard-card-receivables flex min-w-0 flex-col rounded-[10px] border border-slate-200 bg-white px-5 pt-5 pb-3 h-full min-h-[360px]">
+                  {showInitialSkeleton ? (
+                    <MetricChartSkeleton />
+                  ) : (
+                  <>
+                  <div className="mb-1 shrink-0">
+                    <div className="w-full">
+                      <p
+                        className="m-0 text-[13px] font-medium leading-tight text-slate-500"
+                        style={{ fontFamily: FONT }}
+                      >
+                        Total Receivables
+                      </p>
+                      <p
+                        className="m-0 mt-1 break-words text-[clamp(26px,2.6vw,34px)] font-bold leading-tight text-slate-900"
+                        style={{ fontFamily: FONT }}
+                      >
+                        {`\u20B1${fmt(cashflowData.totalOutstanding)}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative -mx-2 min-h-[250px] flex-1">
+                    {activeReceivableMonthIndex !== null &&
+                    cashflowData.chart[activeReceivableMonthIndex] ? (
+                      <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+                        <p className="m-0 text-[12px] font-bold text-black">
+                          {cashflowData.chart[activeReceivableMonthIndex].month}
+                        </p>
+                        <p className="m-0 mt-1 text-[15px] font-medium leading-none text-black">
+                          {`\u20B1${fmt(cashflowData.chart[activeReceivableMonthIndex].outstanding)}`}
+                        </p>
+                      </div>
+                    ) : null}
+                    <ReactApexChart
+                      className="absolute inset-0"
+                      type="bar"
+                      series={receivablesSeries}
+                      options={receivablesChartOptions}
+                      width="100%"
+                      height="100%"
+                    />
+                    <div className="absolute inset-x-[18px] bottom-[8px] z-20 flex h-[30px]">
+                      {cashflowData.chart.map((item, index) => (
+                        <button
+                          key={`receivable-month-${item.month}`}
+                          type="button"
+                          aria-label={`Show receivables for ${item.month}`}
+                          onClick={() =>
+                            setActiveReceivableMonthIndex((current) =>
+                              current === index ? null : index,
+                            )
+                          }
+                          className="h-full flex-1 bg-transparent"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  </>
+                  )}
+                </section>
+              </div>
+              <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 min-[1440px]:grid-cols-4">
+                <section className="dashboard-card-monthly-target w-full rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]">
+                  {showInitialSkeleton ? (
+                    <TargetCardSkeleton />
                   ) : (
                     <>
-                      <div className="relative flex items-start justify-between gap-3">
-                        <div className="flex flex-shrink-0 items-center gap-2">
+                      <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5">
+                        <div className="col-start-1 row-start-2 flex items-center gap-2">
                           <button
                             type="button"
                             onClick={showPreviousTargetMonth}
@@ -3351,7 +3486,7 @@ const Dashboard = () => {
                             <IoChevronForwardOutline className="text-[16px]" />
                           </button>
                         </div>
-                        <div className="min-w-0 flex-1 text-center">
+                        <div className="col-span-2 col-start-1 row-start-1 min-w-0 text-center">
                           <p
                             className="m-0 text-[13px] font-medium text-slate-500"
                             style={{ fontFamily: FONT }}
@@ -3365,7 +3500,7 @@ const Dashboard = () => {
                             {selectedYear}
                           </p>
                         </div>
-                        <div className="relative flex-shrink-0" data-target-dropdown>
+                        <div className="relative col-start-2 row-start-2" data-target-dropdown>
                           <button
                             type="button"
                             onClick={() => setTargetDropdownOpen((v) => !v)}
@@ -3398,25 +3533,7 @@ const Dashboard = () => {
                       </div>
 
                       <div className="mt-1 flex flex-col items-center">
-                        <div className="relative h-[132px] w-full overflow-hidden">
-                          <div className="absolute left-1/2 top-[-44px] -translate-x-1/2">
-                            <ReactApexChart
-                              type="radialBar"
-                              series={[monthlyTargetFill]}
-                              options={monthlyTargetChartOptions}
-                              width={360}
-                              height={220}
-                            />
-                          </div>
-                          <div className="pointer-events-none absolute left-1/2 bottom-[16px] -translate-x-1/2">
-                            <p
-                              className="m-0 text-[22px] font-extrabold leading-none text-slate-900"
-                              style={{ fontFamily: FONT }}
-                            >
-                              {monthlyTargetFill.toFixed(2)}%
-                            </p>
-                          </div>
-                        </div>
+                        <DashboardTargetGauge value={monthlyTargetFill} options={monthlyTargetChartOptions} />
                       </div>
 
                       <div className="mt-0 overflow-hidden rounded-[10px] border border-slate-200 bg-white">
@@ -3448,40 +3565,13 @@ const Dashboard = () => {
                     </>
                   )}
                 </section>
-
-                <section className="dashboard-card-yearly-target mt-5 h-[276px] w-full overflow-hidden rounded-[10px] border border-slate-200 bg-white px-4 py-3 xl:ml-auto xl:max-w-[390px]">
+                <section className="dashboard-card-yearly-target w-full rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]">
                   {showInitialSkeleton ? (
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex flex-shrink-0 items-center gap-2">
-                          <SkeletonBlock className="h-8 w-8 rounded-lg border border-slate-200" />
-                          <SkeletonBlock className="h-8 w-8 rounded-lg border border-slate-200" />
-                        </div>
-                        <div className="min-w-0 flex-1 pt-0.5">
-                          <SkeletonBlock className="mx-auto h-[14px] w-24" />
-                          <SkeletonBlock className="mx-auto mt-0.5 h-[10px] w-10" />
-                        </div>
-                        <SkeletonBlock className="h-8 w-[72px] flex-shrink-0 rounded-lg border border-slate-200" />
-                      </div>
-                      <div className="mt-1 flex flex-col items-center">
-                        <div className="relative h-[132px] w-full overflow-hidden">
-                          <div className="absolute left-1/2 top-[-2px] h-[118px] w-[236px] -translate-x-1/2 rounded-t-full bg-slate-200" />
-                          <SkeletonBlock className="absolute bottom-[16px] left-1/2 h-[22px] w-20 -translate-x-1/2" />
-                        </div>
-                      </div>
-                      <div className="overflow-hidden rounded-[10px] border border-slate-200">
-                        {Array.from({ length: 2 }).map((_, index) => (
-                          <div key={`yearly-target-skeleton-${index}`} className="flex items-center justify-between px-4 py-2.5">
-                            <SkeletonBlock className="h-[16px] w-20" />
-                            <SkeletonBlock className="h-5 w-28" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <TargetCardSkeleton />
                   ) : (
                     <>
-                      <div className="relative flex items-start justify-between gap-3">
-                        <div className="flex flex-shrink-0 items-center gap-2">
+                      <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5">
+                        <div className="col-start-1 row-start-2 flex items-center gap-2">
                           <button
                             type="button"
                             onClick={showPreviousTargetYear}
@@ -3501,7 +3591,7 @@ const Dashboard = () => {
                             <IoChevronForwardOutline className="text-[16px]" />
                           </button>
                         </div>
-                        <div className="min-w-0 flex-1 text-center">
+                        <div className="col-span-2 col-start-1 row-start-1 min-w-0 text-center">
                           <p
                             className="m-0 text-[13px] font-medium text-slate-500"
                             style={{ fontFamily: FONT }}
@@ -3515,7 +3605,7 @@ const Dashboard = () => {
                             {selectedYearlyTargetYear}
                           </p>
                         </div>
-                        <div className="relative flex-shrink-0" data-yearly-target-dropdown>
+                        <div className="relative col-start-2 row-start-2" data-yearly-target-dropdown>
                           <button
                             type="button"
                             onClick={() => setYearlyTargetDropdownOpen((v) => !v)}
@@ -3548,25 +3638,7 @@ const Dashboard = () => {
                       </div>
 
                       <div className="mt-1 flex flex-col items-center">
-                        <div className="relative h-[132px] w-full overflow-hidden">
-                          <div className="absolute left-1/2 top-[-44px] -translate-x-1/2">
-                            <ReactApexChart
-                              type="radialBar"
-                              series={[yearlyTargetFill]}
-                              options={monthlyTargetChartOptions}
-                              width={360}
-                              height={220}
-                            />
-                          </div>
-                          <div className="pointer-events-none absolute left-1/2 bottom-[16px] -translate-x-1/2">
-                            <p
-                              className="m-0 text-[22px] font-extrabold leading-none text-slate-900"
-                              style={{ fontFamily: FONT }}
-                            >
-                              {yearlyTargetFill.toFixed(2)}%
-                            </p>
-                          </div>
-                        </div>
+                        <DashboardTargetGauge value={yearlyTargetFill} options={monthlyTargetChartOptions} />
                       </div>
 
                       <div className="mt-0 overflow-hidden rounded-[10px] border border-slate-200 bg-white">
@@ -3598,510 +3670,229 @@ const Dashboard = () => {
                     </>
                   )}
                 </section>
+                <section className="dashboard-card-bill-status rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]">
+                  {showInitialSkeleton ? (
+                    <DonutCardSkeleton labelWidth="w-24" itemCount={3} />
+                  ) : (
+                  <DashboardDonut title="Bill Status" series={billsDonutSeries} options={billsDonutOptions} total={fmtN(totalBills)} items={totalBills > 0 ? billsStatusWithPercent : billsStatus.map((item) => ({ ...item, percent: 0 }))} />
+                  )}
+                </section>
+                <section className="dashboard-card-revenue-quarter rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]">
+                  {showInitialSkeleton ? (
+                    <DonutCardSkeleton labelWidth="w-36" />
+                  ) : (
+                  <DashboardDonut title="Revenue Per Quarter" series={quarterlyRevenueSeries} options={quarterlyRevenueDonutOptions} total={`${PESO}${fmtCompactMoney(quarterlyRevenue.total)}`} items={quarterlyRevenue.items} percentages />
+                  )}
+                </section>
               </div>
-
-              <div className="dashboard-overview-grid order-1 space-y-5">
-                <div className="dashboard-overview-row flex flex-col gap-5 xl:flex-row xl:items-stretch">
-                  <div className="dashboard-card-bill-status xl:w-[300px] xl:flex-shrink-0">
-                    <section className="min-h-[276px] rounded-[10px] border border-slate-200 bg-white px-5 py-4 xl:h-full">
-                      {showInitialSkeleton ? (
-                        <DonutCardSkeleton labelWidth="w-24" />
-                      ) : (
-                      <div className="flex flex-col items-center justify-center pt-2">
-                        <div className="mb-4 flex items-center gap-2">
-                          <p
-                            className="text-[13px] font-medium text-slate-500"
-                            style={{ fontFamily: FONT }}
-                          >
-                            Bill Status
-                          </p>
-                        </div>
-
-                        <div className="relative" style={{ width: 208, height: 184 }}>
-                          <div
-                            className="absolute"
-                            style={{ top: 8, left: 24, width: 152, height: 152 }}
-                          >
-                            <ReactApexChart
-                              type="donut"
-                              series={billsDonutSeries}
-                              options={billsDonutOptions}
-                              width={152}
-                              height={152}
-                            />
-                          </div>
-
-                          <div
-                            className="pointer-events-none absolute flex flex-col items-center justify-center"
-                            style={{ top: 34, left: 54, width: 96, height: 96 }}
-                          >
-                            <p className="m-0 text-[10px] font-medium text-[#7b8ba7]">Total</p>
-                            <p className="m-0 text-[15px] font-extrabold leading-none text-[#10233f]">
-                              {fmtN(totalBills)}
-                            </p>
-                          </div>
-
-                          {(totalBills > 0
-                            ? billsStatusWithPercent
-                            : billsStatus.map((s) => ({ ...s, percent: 0 }))
-                          ).map((item, index) => {
-                            const positions = [
-                              { left: 0, top: 38, align: "left" },
-                              { right: 4, top: 18, align: "right" },
-                              { right: 2, bottom: 28, align: "right" },
-                            ];
-                            const position = positions[index] ?? positions[0];
-
-                            return (
-                              <div
-                                key={item.key}
-                                className="absolute"
-                                style={position}
-                              >
-                                <p
-                                  className={`m-0 text-[12px] font-bold leading-none text-slate-900 ${
-                                    position.align === "right" ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {item.value}
-                                </p>
-                                <p
-                                  className={`m-0 mt-1 text-[10px] font-medium text-slate-600 ${
-                                    position.align === "right" ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {item.name}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      )}
-                    </section>
-                  </div>
-
-                  <div className="dashboard-card-cash-received min-w-0 xl:flex-1">
-                    <section className="h-[276px] rounded-[10px] border border-slate-200 bg-white px-4 py-4">
-                      {showInitialSkeleton ? (
-                        <MetricChartSkeleton />
-                      ) : (
-                      <>
-                      <div className="mb-3">
-                        <div className="w-full rounded-[10px] border border-slate-200 bg-white px-6 py-3 text-center">
-                          <p
-                            className="m-0 text-[13px] font-medium text-slate-500"
-                            style={{ fontFamily: FONT }}
-                          >
-                            Total Cash Received
-                          </p>
-                          <p
-                            className="m-0 mt-1 break-words text-[clamp(20px,2.2vw,28px)] font-bold leading-tight text-slate-900"
-                            style={{ fontFamily: FONT }}
-                          >
-                            {`\u20B1${fmt(cashflowData.totalRevenue)}`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative -mt-2 -mb-2 -ml-3 -mr-2">
-                        {activeCashMonthIndex !== null && cashflowData.chart[activeCashMonthIndex] ? (
-                          <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
-                            <p className="m-0 text-[12px] font-bold text-black">
-                              {cashflowData.chart[activeCashMonthIndex].month}
-                            </p>
-                            <p className="m-0 mt-1 text-[15px] font-medium leading-none text-black">
-                              {`\u20B1${fmt(cashflowData.chart[activeCashMonthIndex].revenue)}`}
-                            </p>
-                          </div>
-                        ) : null}
-                        <ReactApexChart
-                          type="bar"
-                          series={cashReceivedSeries}
-                        options={cashReceivedChartOptions}
-                        height={190}
-                        />
-                        <div className="absolute inset-x-[18px] bottom-[8px] z-20 flex h-[30px]">
-                          {cashflowData.chart.map((item, index) => (
-                            <button
-                              key={`cash-month-${item.month}`}
-                              type="button"
-                              aria-label={`Show cash received for ${item.month}`}
-                              onClick={() =>
-                                setActiveCashMonthIndex((current) =>
-                                  current === index ? null : index,
-                                )
-                              }
-                              className="h-full flex-1 bg-transparent"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      </>
-                      )}
-                    </section>
-                  </div>
-                </div>
-
-                <div className="dashboard-overview-row flex flex-col gap-5 xl:flex-row xl:items-stretch">
-                  <div className="dashboard-card-revenue-quarter xl:w-[300px] xl:flex-shrink-0">
-                    <section className="min-h-[276px] rounded-[10px] border border-slate-200 bg-white px-5 py-4 xl:h-full">
-                      {showInitialSkeleton ? (
-                        <DonutCardSkeleton labelWidth="w-36" />
-                      ) : (
-                      <div className="flex flex-col items-center justify-center pt-2">
-                        <div className="mb-4 flex items-center gap-2">
-                          <p
-                            className="text-[13px] font-medium text-slate-500"
-                            style={{ fontFamily: FONT }}
-                          >
-                            Revenue Per Quarter
-                          </p>
-                        </div>
-
-                        <div className="relative" style={{ width: 208, height: 176 }}>
-                          <div
-                            className="absolute"
-                            style={{ top: 6, left: 24, width: 152, height: 152 }}
-                          >
-                            <ReactApexChart
-                              type="donut"
-                              series={quarterlyRevenueSeries}
-                              options={quarterlyRevenueDonutOptions}
-                              width={152}
-                              height={152}
-                            />
-                          </div>
-
-                          <div
-                            className="pointer-events-none absolute flex flex-col items-center justify-center"
-                            style={{ top: 34, left: 54, width: 96, height: 96 }}
-                          >
-                          </div>
-
-                          {(quarterlyRevenue.total > 0
-                            ? quarterlyRevenue.items
-                            : [
-                                { key: "q1", name: "Q1", percent: 0 },
-                                { key: "q2", name: "Q2", percent: 0 },
-                                { key: "q3", name: "Q3", percent: 0 },
-                                { key: "q4", name: "Q4", percent: 0 },
-                              ]
-                          ).map((item, index) => {
-                            const positions = [
-                              { left: -2, top: 28, align: "left" },
-                              { right: 2, top: 16, align: "right" },
-                              { left: 0, bottom: 22, align: "left" },
-                              { right: 2, bottom: 22, align: "right" },
-                            ];
-                            const position = positions[index] ?? positions[0];
-
-                            return (
-                              <div key={item.key} className="absolute" style={position}>
-                                <p
-                                  className={`m-0 text-[12px] font-bold leading-none text-slate-900 ${
-                                    position.align === "right" ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {item.percent}%
-                                </p>
-                                <p
-                                  className={`m-0 mt-1 text-[10px] font-medium text-slate-600 ${
-                                    position.align === "right" ? "text-right" : "text-left"
-                                  }`}
-                                >
-                                  {item.name}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      )}
-                    </section>
-                  </div>
-
-                  <div className="dashboard-card-receivables min-w-0 xl:flex-1">
-                    <section className="h-[276px] overflow-hidden rounded-[10px] border border-slate-200 bg-white px-4 py-4">
-                      {showInitialSkeleton ? (
-                        <MetricChartSkeleton />
-                      ) : (
-                      <>
-                      <div className="mb-3">
-                        <div className="w-full rounded-[10px] border border-slate-200 bg-white px-6 py-3 text-center">
-                          <p
-                            className="m-0 text-[13px] font-medium text-slate-500"
-                            style={{ fontFamily: FONT }}
-                          >
-                            Total Receivables
-                          </p>
-                          <p
-                            className="m-0 mt-1 break-words text-[clamp(20px,2.2vw,28px)] font-bold leading-tight text-slate-900"
-                            style={{ fontFamily: FONT }}
-                          >
-                            {`\u20B1${fmt(cashflowData.totalOutstanding)}`}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative -mt-2 -mb-2 -ml-3 -mr-2">
-                        {activeReceivableMonthIndex !== null &&
-                        cashflowData.chart[activeReceivableMonthIndex] ? (
-                          <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
-                            <p className="m-0 text-[12px] font-bold text-black">
-                              {cashflowData.chart[activeReceivableMonthIndex].month}
-                            </p>
-                            <p className="m-0 mt-1 text-[15px] font-medium leading-none text-black">
-                              {`\u20B1${fmt(cashflowData.chart[activeReceivableMonthIndex].outstanding)}`}
-                            </p>
-                          </div>
-                        ) : null}
-                        <ReactApexChart
-                          type="bar"
-                          series={receivablesSeries}
-                          options={receivablesChartOptions}
-                          height={190}
-                        />
-                        <div className="absolute inset-x-[18px] bottom-[8px] z-20 flex h-[30px]">
-                          {cashflowData.chart.map((item, index) => (
-                            <button
-                              key={`receivable-month-${item.month}`}
-                              type="button"
-                              aria-label={`Show receivables for ${item.month}`}
-                              onClick={() =>
-                                setActiveReceivableMonthIndex((current) =>
-                                  current === index ? null : index,
-                                )
-                              }
-                              className="h-full flex-1 bg-transparent"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      </>
-                      )}
-                    </section>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
-              <section className="rounded-[10px] border border-slate-200 bg-white px-5 py-4">
-                {showInitialSkeleton ? (
-                  <LineChartSkeleton />
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <p
-                        className="m-0 text-center text-[13px] font-medium text-slate-500"
-                        style={{ fontFamily: FONT }}
-                      >
-                        Fish Catches Per Month
-                      </p>
-                    </div>
-
-                    <ReactApexChart
-                      type="line"
-                      series={monthlyFishCatchSeries}
-                      options={monthlyFishCatchChartOptions}
-                      height={240}
-                    />
-                  </>
-                )}
-              </section>
-
-              <section className="rounded-[10px] border border-slate-200 bg-white px-5 py-4">
-                {showInitialSkeleton ? (
-                  <LineChartSkeleton />
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <p
-                        className="m-0 text-center text-[13px] font-medium text-slate-500"
-                        style={{ fontFamily: FONT }}
-                      >
-                        Yearly Revenue
-                      </p>
-                    </div>
-
-                    <ReactApexChart
-                      type="bar"
-                      series={yearlyRevenueSeries}
-                      options={yearlyRevenueChartOptions}
-                      height={240}
-                    />
-                  </>
-                )}
-              </section>
-            </div>
-
-            {/* Docking chart + Yearly Receivables — side by side */}
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-              {/* Docking Per Month */}
-              <section
-                className="rounded-[10px] bg-white px-5 py-4"
-                style={{ border: "1px solid #e5e7eb" }}
-              >
-                {showInitialSkeleton ? (
-                  <LineChartSkeleton />
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <p
-                        className="m-0 text-center text-[13px] font-medium text-slate-500"
-                        style={{ fontFamily: FONT }}
-                      >
-                        Docking Per Month
-                      </p>
-                    </div>
-
-                    <ReactApexChart
-                      type="line"
-                      series={monthlyDockingSeries}
-                      options={monthlyDockingChartOptions}
-                      height={340}
-                    />
-                  </>
-                )}
-              </section>
-
-              {/* Yearly Receivables */}
-              <section
-                className="rounded-[10px] border border-slate-200 bg-white px-5 py-4"
-                style={{ border: "1px solid #e5e7eb" }}
-              >
-                {showInitialSkeleton ? (
-                  <LineChartSkeleton />
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <p
-                        className="m-0 text-center text-[13px] font-medium text-slate-500"
-                        style={{ fontFamily: FONT }}
-                      >
-                        Yearly Receivables
-                      </p>
-                    </div>
-
-                    <ReactApexChart
-                      type="bar"
-                      series={yearlyReceivablesSeries}
-                      options={yearlyReceivablesChartOptions}
-                      height={340}
-                    />
-                  </>
-                )}
-              </section>
-
-              {/* Banyera Per Month */}
-              <section
-                className="rounded-[10px] bg-white px-5 py-4"
-                style={{ border: "1px solid #e5e7eb" }}
-              >
-                {showInitialSkeleton ? (
-                  <LineChartSkeleton />
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <p
-                        className="m-0 text-center text-[13px] font-medium text-slate-500"
-                        style={{ fontFamily: FONT }}
-                      >
-                        Banyera Per Month
-                      </p>
-                    </div>
-
-                    <ReactApexChart
-                      type="line"
-                      series={monthlyBanyeraSeries}
-                      options={monthlyBanyeraChartOptions}
-                      height={340}
-                    />
-                  </>
-                )}
-              </section>
-
-              {/* Transaction Per Month */}
-              <section
-                className="rounded-[10px] border border-slate-200 bg-white px-5 py-4"
-                style={{ border: "1px solid #e5e7eb" }}
-              >
-                {showInitialSkeleton ? (
-                  <LineChartSkeleton />
-                ) : (
-                  <>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <section className="dashboard-card-yearly-revenue rounded-[10px] border border-slate-200 bg-white px-5 py-4 min-w-0 h-full">
+                  {showInitialSkeleton ? (
+                    <LineChartSkeleton />
+                  ) : (
+                    <>
                       <div className="mb-4">
                         <p
                           className="m-0 text-center text-[13px] font-medium text-slate-500"
                           style={{ fontFamily: FONT }}
                         >
-                          Transaction Per Month
+                          Yearly Revenue
                         </p>
                       </div>
 
                       <ReactApexChart
                         type="bar"
-                        series={monthlyTransactionSeries}
-                      options={monthlyTransactionChartOptions}
-                      height={340}
-                    />
-                  </>
-                )}
-              </section>
-
-            </div>
-
-            <div className="mt-6 mb-6">
-              <section className="rounded-[10px] border border-slate-200 bg-white px-5 py-4">
-                {showInitialSkeleton ? (
-                  <div>
-                    <SkeletonBlock className="mx-auto mb-6 h-[16px] w-64" />
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                      <div className="h-[300px] animate-pulse rounded-lg bg-slate-200" />
-                      <div className="h-[300px] animate-pulse rounded-lg bg-slate-200" />
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="mb-4">
-                      <p
-                        className="m-0 text-center text-[13px] font-medium text-slate-500"
-                        style={{ fontFamily: FONT }}
-                      >
-                        Registered and Visiting Boats per Month
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                      <div>
-                        <div className="mb-3 text-center">
-                          <p className="m-0 text-[12px] font-medium text-slate-500">Docking</p>
-                        </div>
-                        <ReactApexChart
-                          type="bar"
-                          series={monthlyDockingTotalSeries}
-                          options={monthlyRegisteredVsVisitingChartOptions}
-                          height={300}
-                        />
+                        series={yearlyRevenueSeries}
+                        options={yearlyRevenueChartOptions}
+                        height={340}
+                      />
+                    </>
+                  )}
+                </section>
+                <section
+                  className="dashboard-card-yearly-receivables rounded-[10px] border border-slate-200 bg-white px-5 py-4 min-w-0 h-full"
+                  style={{ border: "1px solid #e5e7eb" }}
+                >
+                  {showInitialSkeleton ? (
+                    <LineChartSkeleton />
+                  ) : (
+                    <>
+                      <div className="mb-4">
+                        <p
+                          className="m-0 text-center text-[13px] font-medium text-slate-500"
+                          style={{ fontFamily: FONT }}
+                        >
+                          Yearly Receivables
+                        </p>
                       </div>
 
-                      <div>
-                        <div className="mb-3 text-center">
-                          <p className="m-0 text-[12px] font-medium text-slate-500">Banyera</p>
+                      <ReactApexChart
+                        type="bar"
+                        series={yearlyReceivablesSeries}
+                        options={yearlyReceivablesChartOptions}
+                        height={340}
+                      />
+                    </>
+                  )}
+                </section>
+              </div>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <section
+                  className="dashboard-card-monthly-docking rounded-[10px] bg-white px-5 py-4 min-w-0 h-full"
+                  style={{ border: "1px solid #e5e7eb" }}
+                >
+                  {showInitialSkeleton ? (
+                    <LineChartSkeleton />
+                  ) : (
+                    <>
+                      <div className="mb-4">
+                        <p
+                          className="m-0 text-center text-[13px] font-medium text-slate-500"
+                          style={{ fontFamily: FONT }}
+                        >
+                          Docking Per Month
+                        </p>
+                      </div>
+
+                      <ReactApexChart
+                        type="line"
+                        series={monthlyDockingSeries}
+                        options={monthlyDockingChartOptions}
+                        height={340}
+                      />
+                    </>
+                  )}
+                </section>
+                <section
+                  className="dashboard-card-monthly-banyera rounded-[10px] bg-white px-5 py-4 min-w-0 h-full"
+                  style={{ border: "1px solid #e5e7eb" }}
+                >
+                  {showInitialSkeleton ? (
+                    <LineChartSkeleton />
+                  ) : (
+                    <>
+                      <div className="mb-4">
+                        <p
+                          className="m-0 text-center text-[13px] font-medium text-slate-500"
+                          style={{ fontFamily: FONT }}
+                        >
+                          Banyera Per Month
+                        </p>
+                      </div>
+
+                      <ReactApexChart
+                        type="line"
+                        series={monthlyBanyeraSeries}
+                        options={monthlyBanyeraChartOptions}
+                        height={340}
+                      />
+                    </>
+                  )}
+                </section>
+              </div>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <section className="dashboard-card-fish-catches rounded-[10px] border border-slate-200 bg-white px-5 py-4 min-w-0 h-full">
+                  {showInitialSkeleton ? (
+                    <LineChartSkeleton />
+                  ) : (
+                    <>
+                      <div className="mb-4">
+                        <p
+                          className="m-0 text-center text-[13px] font-medium text-slate-500"
+                          style={{ fontFamily: FONT }}
+                        >
+                          Fish Catches Per Month
+                        </p>
+                      </div>
+
+                      <ReactApexChart
+                        type="line"
+                        series={monthlyFishCatchSeries}
+                        options={monthlyFishCatchChartOptions}
+                        height={340}
+                      />
+                    </>
+                  )}
+                </section>
+                <section
+                  className="dashboard-card-monthly-transactions rounded-[10px] border border-slate-200 bg-white px-5 py-4 min-w-0 h-full"
+                  style={{ border: "1px solid #e5e7eb" }}
+                >
+                  {showInitialSkeleton ? (
+                    <LineChartSkeleton />
+                  ) : (
+                    <>
+                        <div className="mb-4">
+                          <p
+                            className="m-0 text-center text-[13px] font-medium text-slate-500"
+                            style={{ fontFamily: FONT }}
+                          >
+                            Transaction Per Month
+                          </p>
                         </div>
+
                         <ReactApexChart
                           type="bar"
-                          series={monthlyBanyeraTotalSeries}
-                          options={monthlyBanyeraBreakdownChartOptions}
-                          height={300}
-                        />
+                          series={monthlyTransactionSeries}
+                        options={monthlyTransactionChartOptions}
+                        height={340}
+                      />
+                    </>
+                  )}
+                </section>
+              </div>
+                <section className="dashboard-card-boat-comparison rounded-[10px] border border-slate-200 bg-white px-5 py-4 min-w-0 h-full">
+                  {showInitialSkeleton ? (
+                    <div aria-hidden="true">
+                      <SkeletonBlock className="mx-auto mb-4 h-4 w-64 max-w-full" />
+                      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        {[0, 1].map((chart) => (
+                          <div key={chart}>
+                            <SkeletonBlock className="mx-auto mb-3 h-[18px] w-20 max-w-full" />
+                            <SkeletonBlock className="h-[300px] rounded-lg" />
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </>
-                )}
-              </section>
+                  ) : (
+                    <>
+                      <div className="mb-4">
+                        <p
+                          className="m-0 text-center text-[13px] font-medium text-slate-500"
+                          style={{ fontFamily: FONT }}
+                        >
+                          Registered and Visiting Boats per Month
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                        <div>
+                          <div className="mb-3 text-center">
+                            <p className="m-0 text-[12px] font-medium text-slate-500">Docking</p>
+                          </div>
+                          <ReactApexChart
+                            type="bar"
+                            series={monthlyDockingTotalSeries}
+                            options={monthlyRegisteredVsVisitingChartOptions}
+                            height={300}
+                          />
+                        </div>
+
+                        <div>
+                          <div className="mb-3 text-center">
+                            <p className="m-0 text-[12px] font-medium text-slate-500">Banyera</p>
+                          </div>
+                          <ReactApexChart
+                            type="bar"
+                            series={monthlyBanyeraTotalSeries}
+                            options={monthlyBanyeraBreakdownChartOptions}
+                            height={300}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </section>
             </div>
           </div>
         </main>

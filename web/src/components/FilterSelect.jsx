@@ -2,9 +2,22 @@ import React, { useEffect } from "react";
 import { Select } from "antd";
 import Spinner from "./Spinner";
 import "typeface-montserrat";
+import { useLanguageStore } from "../store/languageStore";
+import { translateText } from "../i18n/catalog";
 
 const FONT = "'Montserrat', sans-serif";
 const FILTER_SELECT_STYLE_ID = "universal-filter-select-styles";
+// Only UI enum choices are translated. Numeric IDs and names supplied by the
+// server remain data even if a boat or owner happens to share a UI phrase.
+const UI_OPTION_VALUES = new Set([
+  "daily", "annual", "monthly", "yearly", "all", "active", "inactive", "paid", "unpaid",
+  "checked", "unchecked", "male", "female", "used", "unused", "today", "week", "month",
+  "year", "voided", "visitor", "visiting", "registered", "expired", "suspended", "under_repair",
+  "on", "off", "read", "unread", "enabled", "disabled", "departed", "docked", "deactivated",
+  "head", "coordinator", "inspector", "success", "failed", "online", "offline", "partial",
+  "info", "warning", "critical", "duplicate-entry", "wrong-boat", "wrong-date", "wrong-date-time",
+  "others", "docking", "banyera", "ticket", "penalty", "pending", "types", "entered-by-mistake", "",
+]);
 
 const FILTER_SELECT_STYLES = `
 .universal-filter-select .ant-select-selector {
@@ -127,6 +140,7 @@ const FilterSelect = ({
   loading = false,
   ...props
 }) => {
+  const language = useLanguageStore((state) => state.language);
   useEffect(() => {
     ensureFilterSelectStyles();
   }, []);
@@ -147,6 +161,8 @@ const FilterSelect = ({
   };
 
   const { notFoundContent, ...restProps } = props;
+  const localizedOptions = restProps.options?.map((option) => UI_OPTION_VALUES.has(String(option.value).toLowerCase())
+    ? { ...option, label: translateText(option.label, language) } : option);
 
   return (
     <Select
@@ -176,6 +192,8 @@ const FilterSelect = ({
       value={value}
       showSearch={showSearch}
       {...restProps}
+      {...(localizedOptions ? { options: localizedOptions } : {})}
+      placeholder={translateText(restProps.placeholder, language)}
     />
   );
 };

@@ -10,6 +10,7 @@ import {
   IoLogOutOutline,
   IoMenuOutline,
   IoPersonCircleOutline,
+  IoLanguageOutline,
 } from "react-icons/io5";
 import { logoutUser } from "../pages/login/logout";
 import { getStoredUser } from "../pages/login/auth";
@@ -21,6 +22,8 @@ import { useUniversalSearchQuery } from "../hooks/useUniversalSearchQuery";
 import Spinner from "../components/Spinner";
 import NoDataFound from "../components/NoDataFound";
 import api from "../api/axios";
+import LanguageSelector from "../components/LanguageSelector";
+import { LANGUAGE_OPTIONS, useLanguageStore } from "../store/languageStore";
 
 const formatDisplayDate = (value) => {
   const normalized = String(value || "").slice(0, 10);
@@ -241,6 +244,9 @@ const UniversalSearchVisitorPill = () => (
 const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showLanguageOptions, setShowLanguageOptions] = useState(false);
+  const language = useLanguageStore((state) => state.language);
+  const loadLanguage = useLanguageStore((state) => state.loadLanguage);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [isTouchViewport, setIsTouchViewport] = useState(false);
@@ -259,6 +265,9 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
     staleTime: 60 * 1000,
   });
   const user = settingsQuery.data?.user || storedUser || {};
+  const languageAccountId = storedUser?.user_id ?? storedUser?.id;
+  useEffect(() => { loadLanguage(); }, [languageAccountId, loadLanguage]);
+  useEffect(() => { if (!showDropdown) setShowLanguageOptions(false); }, [showDropdown]);
   const normalizedSearchValue = searchValue.trim();
   const debouncedSearchValue = useDebouncedValue(normalizedSearchValue, 300);
   const searchDataEnabled = debouncedSearchValue.length >= UNIVERSAL_SEARCH_MIN_LENGTH;
@@ -902,8 +911,8 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
                 }}
               >
                 <div className="px-4 py-3" style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <p className="m-0 text-[13px] font-bold" style={{ color: "#1a1f36" }}>{fullName}</p>
-                  <p className="m-0 text-[11px] mt-0.5 text-slate-400">{user?.email || "No email available"}</p>
+                  <p translate="no" className="m-0 text-[13px] font-bold" style={{ color: "#1a1f36" }}>{fullName}</p>
+                  <p translate="no" className="m-0 text-[11px] mt-0.5 text-slate-400">{user?.email || "No email available"}</p>
                 </div>
 
                 <button
@@ -919,6 +928,22 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
                   <IoPersonCircleOutline style={{ fontSize: "16px", color: "#1a1f36" }} />
                   Edit Profile
                 </button>
+
+                <button
+                  type="button"
+                  aria-expanded={showLanguageOptions}
+                  aria-controls="profile-language-options"
+                  onClick={() => setShowLanguageOptions((current) => !current)}
+                  className="flex w-full cursor-pointer items-center gap-3 border-none bg-transparent px-4 py-2.5 text-left text-[13px] font-semibold text-[#1a1f36] hover:bg-[#f8f9fc]"
+                >
+                  <IoLanguageOutline className="text-[16px]" />
+                  <span className="flex-1">Language</span>
+                  <span className="text-[11px] font-normal text-slate-500">{LANGUAGE_OPTIONS.find((option) => option.value === language)?.label}</span>
+                  <IoChevronDownOutline className={`text-xs transition-transform ${showLanguageOptions ? "rotate-180" : ""}`} />
+                </button>
+                {showLanguageOptions && <div id="profile-language-options" className="px-4 pb-3 pt-1">
+                  <LanguageSelector inline onChange={() => setShowLanguageOptions(false)} />
+                </div>}
 
                 <div style={{ height: "1px", backgroundColor: "#f3f4f6", margin: "4px 0" }} />
 

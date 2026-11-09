@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard card layout check</title><style>main{padding:24px!important}@media(min-width:900px){main{margin-left:256px!important;width:calc(100% - 256px)}}</style></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import '/src/index.css';
+import { DashboardDonut, DashboardTargetGauge } from '/src/components/DashboardCharts.jsx';
+const h = React.createElement;
+const radial={chart:{type:'radialBar',sparkline:{enabled:true},parentHeightOffset:0},colors:['#3b5fd4'],stroke:{lineCap:'round'},plotOptions:{radialBar:{startAngle:-90,endAngle:90,offsetY:36,hollow:{margin:0,size:'56%'},track:{background:'#e5e7eb',strokeWidth:'100%',margin:0},dataLabels:{show:false}}},grid:{padding:{top:-18,bottom:-10,left:-12,right:-12}},tooltip:{enabled:false}};
+const bills=[{key:'paid',name:'Paid',value:128,color:'#3b5fd4'},{key:'partial',name:'Partial',value:22,color:'#5b7ff5'},{key:'unpaid',name:'Unpaid',value:14,color:'#c5d3fc'}];
+const quarters=[{key:'q1',name:'Q1',percent:21,color:'#2563eb'},{key:'q2',name:'Q2',percent:27,color:'#5b7ff5'},{key:'q3',name:'Q3',percent:30,color:'#8cabff'},{key:'q4',name:'Q4',percent:22,color:'#c5d3fc'}];
+const donut=items=>({chart:{type:'donut',sparkline:{enabled:true},animations:{enabled:false}},labels:items.map(x=>x.name),colors:items.map(x=>x.color),dataLabels:{enabled:false},legend:{show:false},tooltip:{enabled:false},stroke:{width:0},plotOptions:{pie:{donut:{size:'64%'}}}});
+const card=(child)=>h('section',{className:'rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]'},child);
+const gauge=(title,value)=>card(h(React.Fragment,null,h('p',{className:'text-center text-[13px] font-medium text-slate-500'},title),h('div',{className:'flex justify-between mt-2'},h('span',null,'‹  ›'),h('span',null,'2026')),h(DashboardTargetGauge,{value,options:radial}),h('div',{className:'grid gap-2 rounded-[10px] border border-slate-200 p-3 text-[13px]'},h('div',{className:'flex justify-between'},h('span',null,'Target'),h('strong',null,'₱1,500,000.00')),h('div',{className:'flex justify-between'},h('span',null,'Revenue'),h('strong',null,'₱1,280,000.00')))));
+createRoot(document.getElementById('root')).render(h('main',{className:'mx-auto max-w-[1440px] p-6',style:{fontFamily:"'Montserrat',sans-serif"}},h('h1',{className:'text-xl font-bold mb-2'},'Dashboard cards'),h('p',{className:'text-xs text-slate-500 mb-5'},'Layout check · sample data'),h('div',{className:'grid grid-cols-1 gap-5 md:grid-cols-2 min-[1440px]:grid-cols-4'},gauge('November Target',74.67),gauge('Yearly Target',85.33),card(h(DashboardDonut,{title:'Bill Status',series:[128,22,14],options:donut(bills),total:'164',items:bills})),card(h(DashboardDonut,{title:'Revenue Per Quarter',series:[274,347,380,279],options:donut(quarters),total:'₱1.28M',items:quarters,percentages:true})))));
+</script></body></html>

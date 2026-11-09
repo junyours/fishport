@@ -37,6 +37,7 @@ import { syncUsersQueryCache } from "../../hooks/useUsersQuery";
 import { useSidebar } from "../../store/sidebarStore";
 import { useTransactionLockQuery } from "../../hooks/useTransactionLockQuery";
 import { useFiscalYearStore, getFiscalYearOptions } from "../../store/fiscalYearStore";
+import LanguageSelector from "../../components/LanguageSelector";
 
 const ROLE_LABELS = { head: "Head of MEEO", coordinator: "Coordinator", inspector: "Inspector" };
 const GENDER_LABELS = { male: "Male", female: "Female" };
@@ -101,7 +102,7 @@ const getPasswordErrorMessage = (password = "") => {
 const InfoRow = ({ label, value }) => (
   <div>
     <p className="m-0 mb-1 text-[11px] font-semibold uppercase" style={{ color: "#8C8CA0" }}>{label}</p>
-    <p className="m-0 text-[15px] font-medium text-slate-700">{value || "-"}</p>
+    <p translate="no" className="m-0 text-[15px] font-medium text-slate-700">{value || "-"}</p>
   </div>
 );
 
@@ -238,11 +239,13 @@ const SettingsSkeleton = ({ showRecovery = false }) => (
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-sm">
-        <div className="flex min-h-[122px] flex-col justify-center gap-3 px-6 py-5">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {["fiscal-year", "language"].map((card) => <div key={card} className="overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-sm">
+        <div className="flex min-h-[122px] flex-col justify-center gap-3 px-5 py-5">
           <SkeletonBlock className="h-3 w-24" />
           <SkeletonBlock className="h-10 w-full rounded-[10px] border border-slate-200" />
         </div>
+      </div>)}
       </div>
     </div>
 
@@ -773,13 +776,13 @@ const UserProfileTab = ({ showToast }) => {
 
   return (
     <div>
-      {/* -- Profile and Fiscal Year Cards -- */}
+      {/* -- Profile, Fiscal Year and Language Cards -- */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 mb-5">
         <div className="rounded-[10px] border shadow-sm overflow-hidden" style={{ backgroundColor: "#1A1F36", borderColor: "#1A1F36" }}>
           <div className="px-7 py-5 flex min-h-[122px] items-center justify-start gap-5 text-left">
             <Avatar initials={initials} size={60} />
             <div className="min-w-0">
-              <h2 className="m-0 truncate text-[18px] font-bold uppercase leading-tight text-white">{profile?.first_name} {profile?.last_name}</h2>
+              <h2 translate="no" className="m-0 truncate text-[18px] font-bold uppercase leading-tight text-white">{profile?.first_name} {profile?.last_name}</h2>
               <span className="mt-0.5 block text-[14px] font-medium leading-tight text-white/90">
                 {ROLE_LABELS[profile?.role] || profile?.role}
               </span>
@@ -787,8 +790,9 @@ const UserProfileTab = ({ showToast }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-[10px] border border-slate-200 shadow-sm overflow-visible">
-          <div className="px-6 py-5 flex h-full min-h-[122px] flex-col items-start justify-center gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="min-w-0 bg-white rounded-[10px] border border-slate-200 shadow-sm overflow-visible">
+          <div className="px-5 py-5 flex h-full min-h-[122px] flex-col items-start justify-center gap-3">
             <div>
               <p className="m-0 text-[11px] font-semibold uppercase" style={{ color: "#8C8CA0" }}>Fiscal Year</p>
             </div>
@@ -838,6 +842,13 @@ const UserProfileTab = ({ showToast }) => {
               )}
             </div>
           </div>
+        </div>
+        <div className="min-w-0 rounded-[10px] border border-slate-200 bg-white shadow-sm">
+          <div className="flex h-full min-h-[122px] flex-col items-start justify-center gap-3 px-5 py-5">
+            <p className="m-0 text-[11px] font-semibold uppercase text-[#8C8CA0]">Language</p>
+            <LanguageSelector />
+          </div>
+        </div>
         </div>
       </div>
 

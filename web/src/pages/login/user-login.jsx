@@ -27,6 +27,7 @@ import {
 } from "./auth";
 import Spinner from "../../components/Spinner";
 import { notifyRealtimeAuthChanged } from "../../lib/realtime";
+import { useLanguageStore } from "../../store/languageStore";
 
 const FORCED_LOGOUT_MESSAGE_KEY = "forcedLogoutMessage";
 const FORGOT_PASSWORD_EMAIL_KEY = "forgotPasswordEmail";
@@ -594,6 +595,7 @@ const Login = () => {
       localStorage.removeItem("user");
       sessionStorage.setItem("token", data.token);
       sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+      useLanguageStore.getState().loadLanguage();
       notifyRealtimeAuthChanged();
 
       navigate("/dashboard", { replace: true });
@@ -869,7 +871,7 @@ const Login = () => {
                     Need Help? Contact the
                   </span>
                   <a
-                    href="https://www.facebook.com/profile.php?id=61573333256180"
+                    href="https://www.facebook.com/meeo.opol"
                     target="_blank"
                     rel="noreferrer"
                     className="login-help-contact-admin block w-full text-center font-medium text-[#2563eb] hover:underline"

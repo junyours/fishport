@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { buildApiHeaders, getApiBaseUrl } from "../api/axios";
 import { getAuthToken, setAuthSession } from "../api/auth";
 import { clearOfflineResources } from "../utils/offlineMasterData";
+import { useLanguageStore } from "../store/languageStore";
+import { translate } from "../utils/language";
 
 type SignOutModalProps = {
   visible: boolean;
@@ -24,6 +26,7 @@ const wait = (milliseconds: number) =>
   });
 
 export default function SignOutModal({ visible, onClose }: SignOutModalProps) {
+  const language = useLanguageStore((state) => state.language);
   const router = useRouter();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -74,13 +77,13 @@ export default function SignOutModal({ visible, onClose }: SignOutModalProps) {
               className="text-center text-[18px] text-[#1A1F36]"
               style={{ fontFamily: "Montserrat_600SemiBold" }}
             >
-              Sign Out
+              {translate("Sign Out", language)}
             </Text>
             <Text
               className="mt-2 text-center text-[14px] text-[#6F6F82]"
               style={{ fontFamily: "Montserrat_400Regular" }}
             >
-              Are you sure you want to sign out of your account?
+              {translate("Are you sure you want to sign out of your account?", language)}
             </Text>
 
             <View className="mt-5 flex-row gap-3">
@@ -92,7 +95,7 @@ export default function SignOutModal({ visible, onClose }: SignOutModalProps) {
                   className="text-center text-[14px] text-[#6F6F82]"
                   style={{ fontFamily: "Montserrat_600SemiBold" }}
                 >
-                  Cancel
+                  {translate("Cancel", language)}
                 </Text>
               </Pressable>
 
@@ -108,7 +111,7 @@ export default function SignOutModal({ visible, onClose }: SignOutModalProps) {
                     className="text-center text-[14px] text-white"
                     style={{ fontFamily: "Montserrat_600SemiBold" }}
                   >
-                    Sign Out
+                    {translate("Sign Out", language)}
                   </Text>
                 )}
               </Pressable>

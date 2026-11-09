@@ -60,6 +60,7 @@ import { PENALTY_SETTINGS_EVENT } from "../../utils/penaltySettingsSync";
 import { cacheTab, getCachedTab } from "../../utils/tabSession";
 import { getStoredUser, normalizeRole } from "../login/auth";
 import VisitorPill from "../../components/VisitorPill";
+import CollectionDepositReport from "../../components/CollectionDepositReport";
 
 const FONT = "'Montserrat', sans-serif";
 const antTheme = {
@@ -75,6 +76,7 @@ const antTheme = {
 };
 
 const REPORT_CONTENT = {
+  "collection-deposit": { title: "Collection and Deposit Reports" },
   revenue: { title: "Revenue Reports" },
   remittance: { title: "Remittance Reports" },
   "registered-boats": { title: "Registered Boats" },
@@ -95,7 +97,7 @@ const REPORT_CONTENT = {
   fees: { title: "Fees" },
 };
 
-const HEAD_ONLY_REPORT_KEYS = ["fees"];
+const HEAD_ONLY_REPORT_KEYS = ["fees", "collection-deposit"];
 const REPORTS_TAB_STORAGE_KEY = "opol:reports:active-tab";
 const REPORTS_FILTERS_STORAGE_KEY = "opol:reports:topbar-filters";
 const REPORTS_PREVIEW_STORAGE_KEY = "opol:reports:preview-cache";
@@ -4220,7 +4222,9 @@ const SuperReports = () => {
                   borderLeft: "0",
                 }}
               >
-                <ReportsInnerTopbar
+                {activeReport === "collection-deposit" ? (
+                  <CollectionDepositReport preparedBy={preparedBy} fiscalYear={fiscalYear} />
+                ) : <><ReportsInnerTopbar
                   activeReport={activeReport}
                   title={REPORT_CONTENT[activeReport]?.title}
                   dailyDate={isRemittanceReport ? remittanceDailyDate : dailyDate}
@@ -4389,7 +4393,7 @@ const SuperReports = () => {
                       Preview will appear after clicking Generate PDF
                     </div>
                   )}
-                </div>
+                </div></>}
               </section>
             </div>
           </main>

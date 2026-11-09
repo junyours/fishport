@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mediumspringgreen-mouse-906096.hostingersite.com/api"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -14,7 +17,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://teal-viper-542499.hostingersite.com/api",
+        "EXPO_PUBLIC_API_BASE_URL": "https://mediumspringgreen-mouse-906096.hostingersite.com/api",
         "EXPO_PUBLIC_PUSHER_APP_KEY": "cc24e35d260ccac57dbc",
         "EXPO_PUBLIC_PUSHER_APP_CLUSTER": "ap1",
         "EXPO_PUBLIC_PUSHER_SCHEME": "https",
@@ -23,7 +26,10 @@
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mediumspringgreen-mouse-906096.hostingersite.com/api"
+      }
     }
   },
   "submit": {

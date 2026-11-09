@@ -26,6 +26,7 @@ export const REPORT_TABS = [
   { key: "boat-statement-report", label: "Boat Statement", icon: IoDocumentTextOutline },
   { key: "owner-statement-report", label: "Owner Statement", icon: IoPeopleOutline },
   { key: "collections", label: "Collections", icon: IoReceiptOutline },
+  { key: "collection-deposit", label: "Collection & Deposits", icon: IoDocumentTextOutline },
   { key: "receivables", label: "Receivables", icon: IoReceiptOutline },
   { key: "docking", label: "Docking", icon: IoBoatOutline },
   { key: "banyera", label: "Banyera", icon: IoFishOutline },

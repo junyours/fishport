@@ -4,6 +4,8 @@ import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getFiscalYearOptions, useFiscalYearStore } from "../store/fiscalYearStore";
 import { CalendarIcon } from "./DatePicker";
+import { useLanguageStore } from "../store/languageStore";
+import { translateText } from "../i18n/catalog";
 
 dayjs.extend(customParseFormat);
 
@@ -29,6 +31,7 @@ export default function ReportDailyDatePicker({
   popupClassName = "codex-ant-date-picker-dropdown",
   placement = "bottomLeft",
 }) {
+  const language = useLanguageStore((state) => state.language);
   const generatedId = useId();
   const containerRef = useRef(null);
   const [popupWidth, setPopupWidth] = useState(undefined);
@@ -108,7 +111,7 @@ export default function ReportDailyDatePicker({
         className={mergedClassName}
         popupClassName={popupClassName}
         placement={placement}
-        placeholder={placeholder}
+        placeholder={translateText(placeholder, language)}
         format="MMMM D, YYYY"
         allowClear={false}
         popupStyle={popupWidth ? { width: popupWidth } : undefined}

@@ -100,7 +100,7 @@ export default function PenaltyRulesTab({ showToast }) {
         <thead><tr>{["Penalty Name", "Amount (₱)", "Every", "Effectivity", "On / Off", "Action"].map((label, index) => <th key={label} className={`whitespace-nowrap border-b-2 border-slate-200 px-4 py-3 font-semibold ${[1, 5].includes(index) ? "text-right" : "text-left"}`}>{label}</th>)}</tr></thead>
         <tbody>{query.isLoading ? Array.from({ length: 10 }, (_, row) => <tr key={row}>{Array.from({ length: 6 }, (_, col) => <td key={col} className="px-4 py-4"><div className="h-3 w-24 animate-pulse rounded bg-slate-100" /></td>)}</tr>)
           : query.isError ? <tr><td colSpan={6} className="px-6 py-10 text-center text-[13px] text-red-600">Unable to load penalty records. <button type="button" onClick={() => query.refetch()} className="cursor-pointer underline">Try again</button></td></tr>
-          : !rows.length ? <tr><td colSpan={6}><NoDataFound title="No penalty records found" description="Add a penalty record or change your search and status filter." /></td></tr>
+          : !rows.length ? <tr><td colSpan={6}><NoDataFound title="No penalty found" /></td></tr>
           : rows.map((rule, index) => <tr key={rule.id} className={`border-b border-slate-100 text-[13px] text-[#1a1f36] ${index % 2 === 0 ? "table-row-even" : "table-row-odd"}`}>
             <td className="px-4 py-3 font-medium">{rule.name}</td><td className="px-4 py-3 text-right tabular-nums">{money(rule.amount)}</td>
             <td className="whitespace-nowrap px-4 py-3">{rule.interval_value} {Number(rule.interval_value) === 1 ? rule.interval_unit.replace(/s$/, "") : rule.interval_unit}</td>
