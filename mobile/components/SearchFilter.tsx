@@ -260,21 +260,25 @@ export default function SearchFilter({
       ) : null}
 
       <Pressable
-        className={`h-14 flex-row items-center rounded-[14px] border bg-white px-4 ${
-          error ? "border-[#DC2626]" : "border-[#E8E1E6]"
+        className={`h-14 flex-row items-center rounded-[14px] border px-4 ${
+          disabled ? "bg-[#F1F5F9]" : "bg-white"
+        } ${
+          error ? "border-[#DC2626]" : disabled ? "border-[#CBD5E1]" : "border-[#E8E1E6]"
         }`}
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={openPicker}
       >
         <Text
           className={`flex-1 text-[14px] ${
-            selectedOption ? "text-[#1A1F36]" : "text-[#9AA3AF]"
+            disabled ? "text-[#64748B]" : selectedOption ? "text-[#1A1F36]" : "text-[#9AA3AF]"
           }`}
           style={{ fontFamily: "Montserrat_400Regular" }}
         >
           {selectedOption?.label || placeholder}
         </Text>
-        {showChevron ? <Ionicons name="chevron-down" size={18} color="#8A94A3" /> : null}
+        {showChevron ? <Ionicons name="chevron-down" size={18} color={disabled ? "#94A3B8" : "#8A94A3"} /> : null}
       </Pressable>
 
       {error ? (

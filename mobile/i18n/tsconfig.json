@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": ["catalog.ts", "mobileCatalog.ts", "webCatalog.ts"]
+}
