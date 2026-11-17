@@ -6,7 +6,7 @@ import { buildCollectionDepositPdf, buildCollectionDepositExcel } from "../lib/e
 import { showBottomToast } from "../store/bottomToastStore";
 import { readCollectionDepositCache, writeCollectionDepositCache, restoreCollectionDepositPreview } from "../lib/collectionDepositCache";
 
-export default function CollectionDepositReport({ fiscalYear }) {
+export default function CollectionDepositReport({ fiscalYear, reportSelector }) {
   const queryClient = useQueryClient();
   const [date, setDate] = useState("");
   const [busy, setBusy] = useState("");
@@ -98,13 +98,24 @@ export default function CollectionDepositReport({ fiscalYear }) {
   return <>
     <ReportsInnerTopbar
       activeReport="collection-deposit"
+      reportSelector={reportSelector}
       dailyDate={date}
       onDailyDateChange={changeDate}
       onGenerateReport={() => generate("pdf")}
       onExportExcel={() => generate("excel")}
     />
-    <div className="min-h-0 flex-1 bg-white">
-      {busy === "pdf" ? <div className="flex h-full items-center justify-center text-[13px] text-slate-500">Generating PDF preview...</div> : preview ? <iframe title="Collection and Deposit Report Viewer" src={preview.url} className="h-full w-full border-0" /> : <div className="flex h-full items-center justify-center text-[13px] text-slate-500">Preview will appear after clicking Generate PDF</div>}
+    <div className="min-h-0 flex-1 overflow-hidden bg-white px-4 sm:px-6">
+      {busy === "pdf" ? (
+        <div className="flex h-full items-center justify-center text-[13px] text-slate-500">Generating PDF preview...</div>
+      ) : preview ? (
+        <iframe
+          title="Collection and Deposit Report Viewer"
+          src={preview.url}
+          className="mx-auto block h-full w-full max-w-[1140px] border-0 bg-[#f8fafc] lg:w-[96%]"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-[13px] text-slate-500">Preview will appear after clicking Generate PDF</div>
+      )}
     </div>
   </>;
 }

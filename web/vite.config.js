@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import laravel from 'laravel-vite-plugin'
 import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   server: { fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../mobile/i18n', import.meta.url))] } },
   plugins: [
+    laravel({ input: ['src/main.jsx'], refresh: true }),
     react({ jsxImportSource: '/src/i18n' }),
     {
       name: 'local-language-runtime',

@@ -2,6 +2,7 @@ import React from "react";
 import "typeface-montserrat";
 import ReportDailyDatePicker from "../components/ReportDailyDatePicker";
 import FilterButton from "../components/FilterButton";
+import ReportFilterField from "./ReportFilterField";
 import VisitorPill from "../components/VisitorPill";
 
 import { IoDocumentTextOutline, IoSyncOutline } from "react-icons/io5";
@@ -26,6 +27,7 @@ const renderReportUserOption = (option) => {
 const ReportsInnerTopbar = ({
   activeReport,
   title,
+  reportSelector,
   dailyDate,
   onDailyDateChange,
   monthlyDate,
@@ -168,6 +170,12 @@ const ReportsInnerTopbar = ({
   const showYearly =
     usesCustomReportFilters && activeFilterType === "yearly";
 
+  const boatFilterLabel = isBoatTypesReport
+    ? "Boat Type"
+    : isOwnerInfoReport || isOwnerSignatureReport || isOwnerStatementReport
+      ? "Boat Owner"
+      : "Boat";
+
   const isReadonlyInputStyleReport =
     isRegisteredBoatsReport ||
     isVisitingBoatsReport ||
@@ -185,9 +193,10 @@ const ReportsInnerTopbar = ({
       {usesCustomReportFilters ? (
         <div className="mx-auto flex w-full max-w-[1100px] flex-col items-center justify-center gap-3">
           <div className="flex w-full flex-wrap items-center justify-center gap-2">
+            {reportSelector}
             {/* FILTER TYPE */}
             {!isCollectionDepositReport && !isVehicleTicketReport && !isVehicleTypesReport && !isBoatTypesReport && !isFeesReport && (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="Period">
                 <FilterButton
                   width="100%"
                   height={46}
@@ -199,12 +208,12 @@ const ReportsInnerTopbar = ({
                     { value: "yearly", label: "Yearly" },
                   ]}
                 />
-              </div>
+              </ReportFilterField>
             )}
 
             {/* DAILY */}
             {showDaily && (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="Date">
                 <ReportDailyDatePicker
                   value={dailyDate || undefined}
                   onChange={onDailyDateChange}
@@ -212,13 +221,13 @@ const ReportsInnerTopbar = ({
                   dateFormat="YYYY-MM-DD"
                   containerClassName="w-full"
                 />
-              </div>
+              </ReportFilterField>
             )}
 
           {/* MONTHLY */}
           {showMonthly && (
             <>
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="Month">
                 <FilterButton
                   width="100%"
                   height={46}
@@ -227,9 +236,9 @@ const ReportsInnerTopbar = ({
                   onChange={onMonthlyDateChange}
                   options={monthOptions}
                 />
-              </div>
+              </ReportFilterField>
 
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="Year">
                 <FilterButton
                   width="100%"
                   height={46}
@@ -238,13 +247,13 @@ const ReportsInnerTopbar = ({
                   onChange={onYearlyDateChange}
                   options={yearOptions}
                 />
-              </div>
+              </ReportFilterField>
             </>
           )}
 
           {/* YEARLY */}
           {showYearly && (
-            <div className={REPORT_INPUT_WIDTH_CLASS}>
+            <ReportFilterField label="Year">
               <FilterButton
                 width="100%"
                 height={46}
@@ -253,11 +262,11 @@ const ReportsInnerTopbar = ({
                 onChange={onYearlyDateChange}
                 options={yearOptions}
               />
-            </div>
+            </ReportFilterField>
           )}
 
             {showBoatFilter && (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label={boatFilterLabel}>
                 <FilterButton
                   width="100%"
                   height={46}
@@ -286,11 +295,11 @@ const ReportsInnerTopbar = ({
                     );
                   }}
                 />
-              </div>
+              </ReportFilterField>
             )}
 
             {showTransactionFilter && (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="Transaction">
                 <FilterButton
                   width="100%"
                   height={46}
@@ -312,11 +321,11 @@ const ReportsInnerTopbar = ({
                   }}
                   popupClassName="report-user-filter-dropdown"
                 />
-              </div>
+              </ReportFilterField>
             )}
 
             {showUserFilter && (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="User">
                 <FilterButton
                   width="100%"
                   height={46}
@@ -334,7 +343,7 @@ const ReportsInnerTopbar = ({
                   optionRender={renderReportUserOption}
                   popupClassName="report-user-filter-dropdown"
                 />
-              </div>
+              </ReportFilterField>
             )}
 
           </div>
@@ -365,10 +374,11 @@ const ReportsInnerTopbar = ({
         /* REGISTERED BOATS / OWNER INFO / BFAR / FEES STYLE (UNIFIED) */
         <div className="mx-auto flex w-full max-w-[1100px] flex-col items-center justify-center gap-3">
           <div className="flex w-full flex-wrap items-center justify-center gap-2">
+            {reportSelector}
 
             {/* READONLY INPUT LOOK */}
             {showBoatFilter ? (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label={boatFilterLabel}>
                 <FilterButton
                   width="100%"
                   height={46}
@@ -397,8 +407,8 @@ const ReportsInnerTopbar = ({
                     );
                   }}
                 />
-              </div>
-            ) : (
+              </ReportFilterField>
+            ) : !reportSelector && (
               <div
                 className={`${REPORT_INPUT_WIDTH_CLASS} flex h-[46px] items-center rounded-xl border border-slate-200 bg-white px-4 text-[13px] font-normal text-[#1a1f36] shadow-sm`}
               >
@@ -420,7 +430,7 @@ const ReportsInnerTopbar = ({
             )}
 
             {showUserFilter && (
-              <div className={REPORT_INPUT_WIDTH_CLASS}>
+              <ReportFilterField label="User">
                 <FilterButton
                   width="100%"
                   height={46}
@@ -438,7 +448,7 @@ const ReportsInnerTopbar = ({
                   optionRender={renderReportUserOption}
                   popupClassName="report-user-filter-dropdown"
                 />
-              </div>
+              </ReportFilterField>
             )}
 
           </div>
@@ -468,7 +478,7 @@ const ReportsInnerTopbar = ({
           </div>
         </div>
 
-      ) : (
+      ) : reportSelector || (
         /* DEFAULT TITLE */
         <div className="flex h-[46px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-5 text-[13px] font-semibold text-[#1a1f36]">
           {title || "Report"}

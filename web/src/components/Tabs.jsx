@@ -19,6 +19,7 @@ const Tabs = ({
   const resolvedSkeletonCount = skeletonCount ?? Math.max(tabs.length, 1);
   const [hasLoadedTabsOnce, setHasLoadedTabsOnce] = useState(!loading);
   const showTabSkeleton = loading && !hasLoadedTabsOnce;
+  const TabLabel = onTabChange ? "button" : "div";
   const groupedChildren = (
     <SkeletonLoadingProvider loading={loading}>
       {children}
@@ -74,11 +75,11 @@ const Tabs = ({
             const active = activeKey === key;
 
             return (
-              <button
+              <TabLabel
                 key={key}
-                type="button"
-                onClick={() => onTabChange?.(key)}
-                className={`relative flex items-center gap-2 border-y-0 border-r-0 border-l border-slate-200 px-5 py-3 text-[13px] font-semibold cursor-pointer transition-all duration-150 first:border-l-0 ${
+                type={onTabChange ? "button" : undefined}
+                onClick={onTabChange ? () => onTabChange(key) : undefined}
+                className={`relative flex items-center gap-2 border-y-0 border-r-0 border-l border-slate-200 px-5 py-3 text-[13px] font-semibold transition-all duration-150 first:border-l-0 ${onTabChange ? "cursor-pointer" : ""} ${
                   active
                     ? "z-10 bg-white text-[#2563eb]"
                     : "bg-white text-slate-500"
@@ -88,7 +89,7 @@ const Tabs = ({
                 {active ? <span className="absolute inset-x-0 bottom-[-1px] h-px bg-white" /> : null}
                 {Icon ? <Icon style={{ fontSize: "16px", flexShrink: 0 }} /> : null}
                 {label}
-              </button>
+              </TabLabel>
             );
           })}
         </div>

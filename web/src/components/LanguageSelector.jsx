@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
 import { LANGUAGE_OPTIONS, useLanguageStore } from "../store/languageStore";
 
-export default function LanguageSelector({ className = "", onChange, inline = false }) {
+export default function LanguageSelector({ className = "", onChange }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -63,7 +63,7 @@ export default function LanguageSelector({ className = "", onChange, inline = fa
         id={`language-options-${id}`}
         role="listbox"
         aria-label="Language"
-        className={`${inline ? "relative mt-2" : "absolute left-0 top-[calc(100%+8px)]"} z-30 max-h-[220px] w-full overflow-y-auto rounded-[10px] border border-slate-200 bg-white pt-0 pb-1 shadow-[0_16px_40px_rgba(15,23,42,0.12)] [&::-webkit-scrollbar]:hidden`}
+        className="absolute left-0 top-[calc(100%+8px)] z-30 max-h-[220px] w-full overflow-y-auto rounded-[10px] border border-slate-200 bg-white pt-0 pb-1 shadow-[0_16px_40px_rgba(15,23,42,0.12)] [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {LANGUAGE_OPTIONS.map((option, index) => <button

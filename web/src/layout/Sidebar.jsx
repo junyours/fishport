@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useState, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "typeface-montserrat";
 import "@fontsource/anton";
@@ -11,26 +11,25 @@ import {
   IoCashOutline,
   IoLogOutOutline,
   IoPeopleOutline,
-    IoChevronDownOutline,
-    IoChevronUpOutline,
-  IoPersonOutline,
-  IoAddOutline,
+  IoChevronDownOutline,
+  IoChevronUpOutline,
+  IoEllipsisHorizontalOutline,
   IoCalendarOutline,
   IoListOutline,
+  IoLayersOutline,
   IoPricetagOutline,
   IoReceiptOutline,
   IoCardOutline,
   IoBarChartOutline,
   IoSettingsOutline,
   IoDocumentTextOutline,
-  IoStatsChartOutline,
   IoArchiveOutline,
   IoTimeOutline,
-  IoMailOutline ,
 } from "react-icons/io5";
 import { logoutUser } from "../pages/login/logout";
 import { getStoredUser, normalizeRole } from "../pages/login/auth";
 import Spinner from "../components/Spinner";
+import { useSidebarStore } from "../store/sidebarStore";
 
 
 const LOGO_SRC = "/images/opol_fish_port.png";
@@ -70,18 +69,30 @@ const LogoutModal = ({ onConfirm, onCancel, isLoading }) => (
 );
 
 // ── Collapsible menu item ─────────────────────────────────────────────────────
-const CollapseMenuItem = ({ icon: Icon, label, subItems, activeItem, setActiveItem, onSubItemClick, onSubItemHover, isExpanded }) => {
+const CollapseMenuItem = ({ icon: Icon, label, subItems, activeItem, onItemClick, onItemHover, isExpanded, onExpand }) => {
+  const submenuId = useId();
   const isAnyChildActive = subItems.some((s) => s.label === activeItem);
-  const [open, setOpen] = useState(isAnyChildActive);
+  const rememberedOpen = useSidebarStore((state) => state.openGroups[label]);
+  const setGroupOpen = useSidebarStore((state) => state.setGroupOpen);
+  const open = rememberedOpen ?? isAnyChildActive;
 
   useEffect(() => {
-    if (isAnyChildActive) setOpen(true);
-  }, [isAnyChildActive]);
+    if (isAnyChildActive && rememberedOpen === undefined) {
+      setGroupOpen(label, true);
+    }
+  }, [isAnyChildActive, label, rememberedOpen, setGroupOpen]);
 
   return (
     <div className="my-1">
       <button
-        onClick={() => isExpanded && setOpen((v) => !v)}
+        type="button"
+        aria-label={isExpanded ? undefined : label}
+        aria-expanded={isExpanded && open}
+        aria-controls={submenuId}
+        onClick={() => {
+          if (!isExpanded) onExpand();
+          setGroupOpen(label, !isExpanded || !open);
+        }}
         className={`w-full flex items-center border-l-4 py-2.5 transition-all duration-150 text-left ${
           isExpanded ? "gap-3 pl-3 pr-4" : "justify-center px-0"
         } ${
@@ -93,57 +104,44 @@ const CollapseMenuItem = ({ icon: Icon, label, subItems, activeItem, setActiveIt
         <Icon className="text-lg flex-shrink-0" />
         {isExpanded && (
           <>
-              <span className="flex-1 whitespace-nowrap overflow-hidden">{label}</span>
-              <span className="flex items-center flex-shrink-0">
-                {open ? (
-                  <IoChevronUpOutline className="text-[18px]" />
-                ) : (
-                  <IoChevronDownOutline className="text-[18px]" />
-                )}
-              </span>
-            </>
-          )}
+            <span className="flex-1 whitespace-nowrap overflow-hidden">{label}</span>
+            {open ? (
+              <IoChevronUpOutline className="text-lg flex-shrink-0" aria-hidden="true" />
+            ) : (
+              <IoChevronDownOutline className="text-lg flex-shrink-0" aria-hidden="true" />
+            )}
+          </>
+        )}
       </button>
 
-      {isExpanded && (
-        <div
-          className="overflow-hidden transition-all duration-300 ease-in-out"
-          style={{ maxHeight: open ? "300px" : "0px" }}
-        >
-          {subItems.map(({ icon: SubIcon, label: subLabel }) => {
-            const isActive = activeItem === subLabel;
-            return (
-              <button
-                key={subLabel}
-                onMouseEnter={() => onSubItemHover?.(subLabel)}
-                onClick={() => {
-                  setActiveItem(subLabel);
-                  if (onSubItemClick) onSubItemClick(subLabel);
-                }}
-                className={`w-full flex items-center gap-3 border-l-4 py-2.5 pl-9 pr-4 transition-all duration-150 text-left text-sm my-1 ${
-                  isActive
-                    ? "border-white bg-white/10 text-white font-semibold"
-                    : "border-transparent bg-transparent text-white/50 font-normal hover:bg-white/[0.06] hover:text-white/80"
-                }`}
-              >
-                <SubIcon className="text-lg flex-shrink-0" />
-                <span className="whitespace-nowrap overflow-hidden">{subLabel}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div id={submenuId} hidden={!isExpanded || !open}>
+        {subItems.map((item) => (
+          <MenuItem
+            key={item.label}
+            icon={item.icon}
+            label={item.label}
+            isActive={activeItem === item.label}
+            isExpanded={isExpanded}
+            nested
+            onHover={() => onItemHover(item.label)}
+            onClick={() => onItemClick(item)}
+          />
+        ))}
+      </div>
     </div>
   );
 };
 
 // ── Plain menu item ───────────────────────────────────────────────────────────
-const MenuItem = ({ icon: Icon, label, isActive, onClick, onHover, isExpanded }) => (
+const MenuItem = ({ icon: Icon, label, isActive, onClick, onHover, isExpanded, nested = false }) => (
   <button
+    type="button"
+    aria-label={isExpanded ? undefined : label}
+    aria-current={isActive ? "page" : undefined}
     onMouseEnter={onHover}
     onClick={onClick}
     className={`w-full flex items-center border-l-4 py-2.5 transition-all duration-150 text-left my-1 ${
-      isExpanded ? "gap-3 pl-3 pr-4" : "justify-center px-0"
+      isExpanded ? `gap-3 pr-4 ${nested ? "pl-9" : "pl-3"}` : "justify-center px-0"
     } ${
       isActive
         ? "border-white bg-white/10 text-white font-semibold"
@@ -151,7 +149,7 @@ const MenuItem = ({ icon: Icon, label, isActive, onClick, onHover, isExpanded })
     }`}
   >
     <Icon className="text-lg flex-shrink-0" />
-    {isExpanded && <span className="whitespace-nowrap overflow-hidden">{label}</span>}
+    {isExpanded && <span className={nested ? "min-w-0" : "whitespace-nowrap overflow-hidden"}>{label}</span>}
   </button>
 );
 
@@ -169,6 +167,7 @@ const Sidebar = ({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [keyboardFocused, setKeyboardFocused] = useState(false);
   const [isMobile, setIsMobile] = useState(() => (
     typeof window !== "undefined" ? window.innerWidth < MOBILE_BREAKPOINT : false
   ));
@@ -193,7 +192,7 @@ const Sidebar = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const isExpanded = isMobile || !collapsed || hovered;
+  const isExpanded = isMobile || !collapsed || hovered || keyboardFocused;
   const sidebarWidth = isExpanded ? 256 : 72;
 
   useLayoutEffect(() => {
@@ -266,10 +265,10 @@ const Sidebar = ({
 
     const pathMap = new Map([
       [dashboardPath, "Dashboard"],
-      [boatRegisteredPath, "Boat Management"],
-      [boatTypePath, "Boat Management"],
-      [boatOwnersPath, "Boat Management"],
-      [addBoatPath, "Boat Management"],
+      [boatRegisteredPath, "Registered Boats"],
+      [boatTypePath, "Boat Types"],
+      [boatOwnersPath, "Boat Owners"],
+      [addBoatPath, "Registered Boats"],
       [dockingPath, "Docking"],
       [dockingCalendarPath, "Docking"],
       [banyeraPath, "Banyera"],
@@ -302,18 +301,10 @@ const Sidebar = ({
     return label;
   };
 
-  const handleSubItemClick = (subLabel) => {
-    prefetchForLabel(subLabel);
-    if (subLabel === "Registered Boats")          navigateIfNeeded("/registered-boats");
-    else if (subLabel === "Boat Types")           navigateIfNeeded("/boat-type");
-    else if (subLabel === "Boat Owners")          navigateIfNeeded("/boat-owners");
-    else if (subLabel === "Add Boat")             navigateIfNeeded("/add-boat");
-    else if (subLabel === "Boat Reports")         navigateIfNeeded("/super_boatreports");
-    else if (subLabel === "Revenue Reports")      navigateIfNeeded("/super_revenuereports");
-    else if (subLabel === "Docking Reports")      navigateIfNeeded("/super_dockingreports");
-    else if (subLabel === "Banyera Reports")      navigateIfNeeded("/super_banyerareports");
-    else if (subLabel === "Vehicle Reports")      navigateIfNeeded("/super_vehiclereports");
-
+  const handleItemClick = ({ label, path }) => {
+    setActiveItem?.(label);
+    prefetchForLabel(label);
+    navigateIfNeeded(path);
     if (isMobile) onClose?.();
   };
 
@@ -325,41 +316,58 @@ const Sidebar = ({
       ],
     },
     {
-      label: "Transactions",
+      label: "Operations",
       items: [
-        { type: "item", icon: IoBoatOutline, label: "Boat Management", path: "/registered-boats" },
-        { type: "item", icon: IoCalendarOutline, label: "Docking", path: "/docking" },
-        { type: "item", icon: IoFishOutline, label: "Banyera", path: "/banyera" },
-        { type: "item", icon: IoCarOutline, label: "Vehicle Tickets", path: "/vehicle-tickets" },
-        { type: "item", icon: IoReceiptOutline, label: "Billing", path: "/billing" },
-        { type: "item", icon: IoCashOutline, label: "Collections", path: "/collections" },
-        { type: "item", icon: IoDocumentTextOutline, label: "Statement of Account", path: "/owner-statement" },
+        {
+          type: "collapse", icon: IoBoatOutline, label: "Boat Management",
+          subItems: [
+            { icon: IoBoatOutline, label: "Registered Boats", path: "/registered-boats" },
+            { icon: IoPeopleOutline, label: "Boat Owners", path: "/boat-owners" },
+            { icon: IoLayersOutline, label: "Boat Types", path: "/boat-type" },
+          ],
+        },
+        {
+          type: "collapse", icon: IoListOutline, label: "Transaction",
+          subItems: [
+            { icon: IoCalendarOutline, label: "Docking", path: "/docking" },
+            { icon: IoFishOutline, label: "Banyera", path: "/banyera" },
+            { icon: IoCarOutline, label: "Vehicle Tickets", path: "/vehicle-tickets" },
+          ],
+        },
+        {
+          type: "collapse", icon: IoCardOutline, label: "Finance",
+          subItems: [
+            { icon: IoReceiptOutline, label: "Billing", path: "/billing" },
+            { icon: IoCashOutline, label: "Collections", path: "/collections" },
+            { icon: IoDocumentTextOutline, label: "Statement of Account", path: "/owner-statement" },
+          ],
+        },
         { type: "item", icon: IoPricetagOutline, label: "Set Fees", path: "/set-fees", headOnly: true },
       ],
     },
     {
-      label: "Reports",
+      label: "Insights",
       items: [
         { type: "item", icon: IoBarChartOutline, label: "Reports", path: "/reports" },
       ],
     },
     {
-      label: "Others",
+      label: "More",
       items: [
         {
-          type: "item", icon: IoPeopleOutline, label: "Accounts", path: "/manage-accounts"
+          type: "collapse", icon: IoEllipsisHorizontalOutline, label: "Others",
+          subItems: [
+            { icon: IoPeopleOutline, label: "Accounts", path: "/manage-accounts" },
+            { icon: IoArchiveOutline, label: "Archives", path: "/archives" },
+            { icon: IoNotificationsOutline, label: "Notification", path: "/notification" },
+            { icon: IoTimeOutline, label: "Activity Logs", path: "/activity-logs", headOnly: true },
+          ],
         },
-        { type: "item", icon: IoArchiveOutline,       label: "Archives",     path: "/archives" },
-        { type: "item", icon: IoNotificationsOutline, label: "Notification", path: "/notification"             },
-        { type: "item", icon: IoTimeOutline,          label: "Activity Logs", path: "/activity-logs", headOnly: true },
       ],
     },
   ].map((section) => ({
     ...section,
-    items: section.items.filter((item) => {
-      if (item.headOnly) return isHead;
-      return true;
-    }),
+    items: section.items.filter((item) => !item.headOnly || isHead),
   })).filter((section) => section.items.length > 0);
 
   return (
@@ -388,6 +396,12 @@ const Sidebar = ({
         }}
         onMouseEnter={() => { if (collapsed) setHovered(true);  }}
         onMouseLeave={() => { if (collapsed) setHovered(false); }}
+        onFocusCapture={(event) => {
+          if (event.target.matches(":focus-visible")) setKeyboardFocused(true);
+        }}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardFocused(false);
+        }}
       >
         {/* Logo + Title */}
         <div className="flex items-center pt-5 pb-3 px-4 gap-1 overflow-hidden">
@@ -467,12 +481,12 @@ const Sidebar = ({
                       key={item.label}
                       icon={item.icon}
                       label={item.label}
-                      subItems={item.subItems}
-                      activeItem={activeItem}
-                      setActiveItem={setActiveItem}
-                      onSubItemClick={handleSubItemClick}
-                      onSubItemHover={prefetchForLabel}
+                      subItems={item.subItems.filter((subItem) => !subItem.headOnly || isHead)}
+                      activeItem={activeLabelFromPath}
+                      onItemClick={handleItemClick}
+                      onItemHover={prefetchForLabel}
                       isExpanded={isExpanded}
+                      onExpand={() => setHovered(true)}
                     />
                   );
                 }
@@ -484,15 +498,7 @@ const Sidebar = ({
                     isActive={activeLabelFromPath === item.label}
                     isExpanded={isExpanded}
                     onHover={() => prefetchForLabel(item.label)}
-                    onClick={() => {
-                      setActiveItem?.(item.label);
-                      prefetchForLabel(item.label);
-                      if (!item.path) {
-                        return;
-                      }
-                      navigateIfNeeded(item.path);
-                      if (isMobile) onClose?.();
-                    }}
+                    onClick={() => handleItemClick(item)}
                   />
                 );
               })}

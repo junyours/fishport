@@ -11,6 +11,7 @@ import {
   IoMenuOutline,
   IoPersonCircleOutline,
   IoLanguageOutline,
+  IoCheckmarkOutline,
 } from "react-icons/io5";
 import { logoutUser } from "../pages/login/logout";
 import { getStoredUser } from "../pages/login/auth";
@@ -22,7 +23,6 @@ import { useUniversalSearchQuery } from "../hooks/useUniversalSearchQuery";
 import Spinner from "../components/Spinner";
 import NoDataFound from "../components/NoDataFound";
 import api from "../api/axios";
-import LanguageSelector from "../components/LanguageSelector";
 import { LANGUAGE_OPTIONS, useLanguageStore } from "../store/languageStore";
 
 const formatDisplayDate = (value) => {
@@ -246,6 +246,7 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showLanguageOptions, setShowLanguageOptions] = useState(false);
   const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
   const loadLanguage = useLanguageStore((state) => state.loadLanguage);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -256,6 +257,7 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [burgerHovered, setBurgerHovered] = useState(false);
   const dropdownRef = useRef(null);
+  const languageButtonRef = useRef(null);
   const notificationsRef = useRef(null);
   const searchRef = useRef(null);
   const queryClient = useQueryClient();
@@ -930,6 +932,7 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
                 </button>
 
                 <button
+                  ref={languageButtonRef}
                   type="button"
                   aria-expanded={showLanguageOptions}
                   aria-controls="profile-language-options"
@@ -938,12 +941,45 @@ const Topbar = ({ sidebarOpen, onMenuToggle, sidebarCollapsed }) => {
                 >
                   <IoLanguageOutline className="text-[16px]" />
                   <span className="flex-1">Language</span>
-                  <span className="text-[11px] font-normal text-slate-500">{LANGUAGE_OPTIONS.find((option) => option.value === language)?.label}</span>
+                  {!showLanguageOptions && (
+                    <span translate="no" className="text-[11px] font-normal text-slate-500">
+                      {LANGUAGE_OPTIONS.find((option) => option.value === language)?.label}
+                    </span>
+                  )}
                   <IoChevronDownOutline className={`text-xs transition-transform ${showLanguageOptions ? "rotate-180" : ""}`} />
                 </button>
-                {showLanguageOptions && <div id="profile-language-options" className="px-4 pb-3 pt-1">
-                  <LanguageSelector inline onChange={() => setShowLanguageOptions(false)} />
-                </div>}
+                <div
+                  id="profile-language-options"
+                  hidden={!showLanguageOptions}
+                  role="group"
+                  aria-label="Language"
+                  className="pb-1"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.stopPropagation();
+                      setShowLanguageOptions(false);
+                      languageButtonRef.current?.focus();
+                    }
+                  }}
+                >
+                  {LANGUAGE_OPTIONS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      translate="no"
+                      aria-pressed={language === value}
+                      className="flex w-full items-center justify-between gap-2 py-2 pl-11 pr-4 text-left text-[13px] text-slate-700 hover:bg-slate-50 focus-visible:bg-slate-50 aria-pressed:font-semibold aria-pressed:text-blue-700"
+                      onClick={() => {
+                        setLanguage(value);
+                        setShowLanguageOptions(false);
+                        languageButtonRef.current?.focus();
+                      }}
+                    >
+                      {label}
+                      {language === value && <IoCheckmarkOutline className="shrink-0 text-base" aria-hidden="true" />}
+                    </button>
+                  ))}
+                </div>
 
                 <div style={{ height: "1px", backgroundColor: "#f3f4f6", margin: "4px 0" }} />
 

@@ -5,7 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import "typeface-montserrat";
 import Sidebar from "../../layout/Sidebar";
 import Topbar from "../../layout/Topbar";
-import ReportsInnerSidebar, { REPORT_TABS } from "../../layout/ReportsInnerSidebar";
+import ReportsDropdown, { REPORT_TABS } from "../../layout/ReportsDropdown";
 import ReportsInnerTopbar from "../../layout/ReportsInnerTopbar";
 import { useLocation } from "react-router-dom";
 import { useDailyReportDataQuery } from "../../hooks/useDailyReportDataQuery";
@@ -2099,17 +2099,17 @@ const SuperReports = () => {
     [availableReportTabs],
   );
   const defaultReportTab = availableReportTabs[0]?.key || "revenue";
-  const cachedReportTab = getCachedTab(REPORTS_TAB_STORAGE_KEY, availableReportTabKeys, defaultReportTab);
   const cachedTopbarFilters = useMemo(() => readStoredReportTopbarFilters(), []);
   const initialReportTab = isAllowedReportKey(requestedReportTab)
     ? requestedReportTab
     : requestedTab
-      ? defaultReportTab
-      : cachedReportTab;
+      ? undefined
+      : getCachedTab(REPORTS_TAB_STORAGE_KEY, availableReportTabKeys) || undefined;
   const [activeItem, setActiveItem] = useState(
     initialReportTab === "remittance" ? "Remittance" : "Reports",
   );
-  const [activeReport, setActiveReport] = useState(initialReportTab);
+  const [selectedReport, setSelectedReport] = useState(initialReportTab);
+  const activeReport = selectedReport ?? defaultReportTab;
   const [contentMargin, setContentMargin] = useState(() =>
     window.innerWidth >= 900 ? 256 : 0,
   );
@@ -2227,7 +2227,7 @@ const SuperReports = () => {
 
   useEffect(() => {
     if (isAllowedReportKey(requestedReportTab)) {
-      setActiveReport(requestedReportTab);
+      setSelectedReport(requestedReportTab);
       setActiveItem(requestedReportTab === "remittance" ? "Remittance" : "Reports");
       cacheTab(REPORTS_TAB_STORAGE_KEY, requestedReportTab, availableReportTabKeys);
       if (["daily", "monthly", "yearly"].includes(requestedTab)) {
@@ -2239,13 +2239,12 @@ const SuperReports = () => {
       return;
     }
 
-    const nextReportTab = requestedTab
-      ? defaultReportTab
-      : getCachedTab(REPORTS_TAB_STORAGE_KEY, availableReportTabKeys, defaultReportTab);
-    setActiveReport(nextReportTab);
-    setActiveItem(nextReportTab === "remittance" ? "Remittance" : "Reports");
-    cacheTab(REPORTS_TAB_STORAGE_KEY, nextReportTab, availableReportTabKeys);
-  }, [availableReportTabKeys, defaultReportTab, requestedDate, requestedReportTab, requestedTab]);
+    const cachedReport = requestedTab
+      ? undefined
+      : getCachedTab(REPORTS_TAB_STORAGE_KEY, availableReportTabKeys) || undefined;
+    setSelectedReport(cachedReport);
+    setActiveItem(cachedReport === "remittance" ? "Remittance" : "Reports");
+  }, [availableReportTabKeys, isHead, requestedDate, requestedReportTab, requestedTab]);
 
   useEffect(() => {
     if (window.innerWidth >= 900 && sidebarOpen) {
@@ -3085,7 +3084,7 @@ const SuperReports = () => {
   const handleReportChange = (nextReport) => {
     if (!isAllowedReportKey(nextReport)) return;
     resetReportFilters();
-    setActiveReport(nextReport);
+    setSelectedReport(nextReport);
     setActiveItem(nextReport === "remittance" ? "Remittance" : "Reports");
     cacheTab(REPORTS_TAB_STORAGE_KEY, nextReport, availableReportTabKeys);
     restoreCachedReportPreview(nextReport);
@@ -4128,6 +4127,10 @@ const SuperReports = () => {
     generatedYearlyDate,
   ]);
 
+  const reportSelector = (
+    <ReportsDropdown activeKey={selectedReport} onChange={handleReportChange} tabs={availableReportTabs} />
+  );
+
   return (
     <ConfigProvider theme={antTheme}>
       <style>{`
@@ -4208,24 +4211,13 @@ const SuperReports = () => {
             sidebarCollapsed={sidebarCollapsed}
             onMenuToggle={toggleSidebar}
           />
-          <main className="flex-1 overflow-hidden bg-[#f8fafc]">
-            <div className="flex h-full min-h-0 w-full flex-col lg:flex-row">
-              <ReportsInnerSidebar
-                activeKey={activeReport}
-                onChange={handleReportChange}
-                tabs={availableReportTabs}
-              />
-
-              <section
-                className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white"
-                style={{
-                  borderLeft: "0",
-                }}
-              >
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f8fafc]">
+              <section className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
                 {activeReport === "collection-deposit" ? (
-                  <CollectionDepositReport preparedBy={preparedBy} fiscalYear={fiscalYear} />
+                  <CollectionDepositReport preparedBy={preparedBy} fiscalYear={fiscalYear} reportSelector={reportSelector} />
                 ) : <><ReportsInnerTopbar
                   activeReport={activeReport}
+                  reportSelector={reportSelector}
                   title={REPORT_CONTENT[activeReport]?.title}
                   dailyDate={isRemittanceReport ? remittanceDailyDate : dailyDate}
                   onDailyDateChange={isRemittanceReport ? handleRemittanceDailyDateChange : handleDailyDateChange}
@@ -4369,33 +4361,28 @@ const SuperReports = () => {
                   }
                 />
 
-                <div className="flex-1 min-h-0 overflow-hidden bg-white relative">
+                <div className="relative min-h-0 flex-1 overflow-hidden bg-white px-4 sm:px-6">
                   {reportPdfLoading ? (
-                    <div className="flex h-full min-h-[calc(100vh-150px)] items-center justify-center bg-white text-[13px] text-slate-500">
+                    <div className="flex h-full items-center justify-center bg-white text-[13px] text-slate-500">
                       Generating PDF preview...
                     </div>
                   ) : reportPdfUrl ? (
-                    <div className="flex h-full min-h-0 flex-col">
-                      <iframe
-                        title={`${REPORT_CONTENT[activeReport]?.title ?? "Reports"} Viewer`}
-                        src={reportViewerUrl}
-                        className="block min-h-[calc(100vh-150px)] flex-1 w-full border-0"
-                        scrolling="no"
-                        style={{ backgroundColor: "#f8fafc" }}
-                      />
-                    </div>
+                    <iframe
+                      title={`${REPORT_CONTENT[activeReport]?.title ?? "Reports"} Viewer`}
+                      src={reportViewerUrl}
+                      className="mx-auto block h-full w-full max-w-[1140px] border-0 bg-[#f8fafc] lg:w-[96%]"
+                    />
                   ) : reportGenerated ? (
-                    <div className="flex h-full min-h-[calc(100vh-150px)] items-center justify-center bg-white text-[13px] text-slate-500">
+                    <div className="flex h-full items-center justify-center bg-white text-[13px] text-slate-500">
                       Generating PDF preview...
                     </div>
                   ) : (
-                    <div className="flex h-full min-h-[calc(100vh-150px)] items-center justify-center text-[13px] text-slate-500">
+                    <div className="flex h-full items-center justify-center text-[13px] text-slate-500">
                       Preview will appear after clicking Generate PDF
                     </div>
                   )}
                 </div></>}
               </section>
-            </div>
           </main>
         </div>
       </div>

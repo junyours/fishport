@@ -1,4 +1,5 @@
 import { useLanguageStore } from "../../store/languageStore";
+import { useSidebarStore } from "../../store/sidebarStore";
 
 export function getStoredToken() {
   localStorage.removeItem("token");
@@ -10,6 +11,7 @@ export function clearStoredAuth() {
   sessionStorage.removeItem("user");
   localStorage.removeItem("token");
   localStorage.removeItem("user");
+  useSidebarStore.getState().resetGroups();
   useLanguageStore.getState().loadLanguage();
 }
 

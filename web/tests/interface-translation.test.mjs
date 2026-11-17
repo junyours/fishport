@@ -45,10 +45,15 @@ test("Tagalog translates real JSX screens and controls, preserving field values 
 
 test("Cebuano translates report navigation while keeping the report keys unchanged", async () => {
   await withLanguage("ceb", async ({ server, jsx, translateText }) => {
-    const { default: ReportSidebar, REPORT_TABS } = await server.ssrLoadModule("/src/layout/ReportsInnerSidebar.jsx");
-    const markup = renderToStaticMarkup(jsx(ReportSidebar, { activeKey: "collections" }));
+    const { default: ReportsDropdown, REPORT_TABS, getReportGroups } = await server.ssrLoadModule("/src/layout/ReportsDropdown.jsx");
+    const markup = renderToStaticMarkup(jsx(ReportsDropdown, { activeKey: "collections" }));
     assert.match(markup, /Mga Koleksyon/);
-    assert.match(markup, /Koleksyon ug mga Deposito/);
+    const groups = getReportGroups(REPORT_TABS, "ceb");
+    assert.ok(groups.find(({ label }) => label === "K").options.some(({ value, label }) =>
+      value === "collection-deposit" && label === "Koleksyon ug mga Deposito"
+    ));
+    const noSelection = renderToStaticMarkup(jsx(ReportsDropdown, {}));
+    assert.match(noSelection, /Pagpili og Matang sa Tahò/);
     assert.equal(REPORT_TABS.find((tab) => tab.key === "collection-deposit").label, "Collection & Deposits");
     assert.equal(translateText("Please select a day.", "ceb"), "Palihog pagpili og adlaw.");
     assert.equal(translateText("Name supplied by user", "ceb"), "Name supplied by user");

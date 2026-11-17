@@ -311,24 +311,15 @@ const MetricChartSkeleton = () => (
   </div>
 );
 
-const DonutCardSkeleton = ({ labelWidth = "w-28", itemCount = 4 }) => (
+const DonutCardSkeleton = ({ labelWidth }) => (
   <div aria-hidden="true" className="flex h-full min-w-0 flex-col">
     <SkeletonBlock className={`mx-auto h-4 max-w-full ${labelWidth}`} />
-    <div className="mx-auto my-3 grid h-[224px] w-full max-w-[280px] place-items-center">
-      <div className="relative aspect-square w-full max-w-[204px] animate-pulse rounded-full bg-slate-200">
-        <div className="absolute inset-[18%] flex flex-col items-center justify-center gap-2 rounded-full bg-white">
-          <SkeletonBlock className="h-3 w-9" />
-          <SkeletonBlock className="h-6 w-16 max-w-full" />
+    <div className="grid flex-1 place-items-center">
+      <div className="grid aspect-[336/276] w-full max-w-[356px] place-items-center">
+        <div className="relative aspect-square w-3/5 animate-pulse rounded-full bg-slate-200">
+          <div className="absolute inset-[17%] rounded-full bg-white" />
         </div>
       </div>
-    </div>
-    <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-2.5">
-      {Array.from({ length: itemCount }, (_, index) => (
-        <div key={index} className="flex h-[18px] min-w-0 items-center justify-between gap-2">
-          <SkeletonBlock className="h-3 w-12 max-w-full" />
-          <SkeletonBlock className="h-3 w-6 shrink-0" />
-        </div>
-      ))}
     </div>
   </div>
 );
@@ -576,8 +567,6 @@ const Dashboard = () => {
     totalRemittances,
     totalTransactionRevenue,
     billsStatus,
-    billsStatusWithPercent,
-    totalBills,
     topFishCatches,
     monthlyFishCatches,
     monthlyDockings,
@@ -731,12 +720,6 @@ const Dashboard = () => {
         if (status.key === "partial") return totalPaid > 0 && totalPaid < totalAmount;
         return totalPaid <= 0;
       }).length,
-    }));
-
-    const statusTotal = statusItems.reduce((sum, item) => sum + item.value, 0);
-    const statusItemsWithPercent = statusItems.map((item) => ({
-      ...item,
-      percent: statusTotal > 0 ? Math.round((item.value / statusTotal) * 100) : 0,
     }));
 
     const dockingsForYear = dockings.filter(
@@ -977,8 +960,6 @@ const Dashboard = () => {
       totalRemittances,
       totalTransactionRevenue: transactionRevenueData.total,
       billsStatus: statusItems,
-      billsStatusWithPercent: statusItemsWithPercent,
-      totalBills: statusItems.reduce((sum, item) => sum + item.value, 0),
       topFishCatches,
       monthlyFishCatches,
       monthlyDockings,
@@ -1217,47 +1198,10 @@ const Dashboard = () => {
     monthlyTarget > 0 ? (monthlyRevenue / monthlyTarget) * 100 : 0;
   const monthlyTargetFill = Math.min(Math.max(monthlyTargetProgress, 0), 100);
   const yearlyTarget = Number(yearlyTargets[String(selectedYearlyTargetYear)] ?? 0);
-  const yearlyRevenue = useMemo(() => {
-    const selectedYearNumber = Number(selectedYearlyTargetYear);
-    const dockings = data?.dockings ?? [];
-    const banyeraTransactions = data?.banyeraTransactions ?? [];
-    const vehicleTickets = (data?.vehicleTickets ?? []).filter(
-      (ticket) =>
-        !Boolean(ticket?.is_voided || ticket?.voided_at) &&
-        String(ticket?.status || "").toLowerCase() !== "voided",
-    );
-
-    const getYear = (value) => {
-      const parsedDate = new Date(value || 0);
-      return Number.isNaN(parsedDate.getTime()) ? null : parsedDate.getFullYear();
-    };
-
-    const getBanyeraTransactionTotal = (transaction) => {
-      const storedTotal = Number(transaction?.total_fee ?? 0);
-      if (storedTotal > 0) return storedTotal;
-      return (transaction?.items ?? []).reduce(
-        (sum, item) => sum + Number(item?.subtotal ?? 0),
-        0,
-      );
-    };
-
-    const dockingRevenue = dockings.reduce((sum, docking) => {
-      const year = getYear(docking?.docking_date || docking?.created_at);
-      return year === selectedYearNumber ? sum + Number(docking?.docking_fee ?? 0) : sum;
-    }, 0);
-
-    const banyeraRevenue = banyeraTransactions.reduce((sum, transaction) => {
-      const year = getYear(transaction?.transaction_date || transaction?.created_at);
-      return year === selectedYearNumber ? sum + getBanyeraTransactionTotal(transaction) : sum;
-    }, 0);
-
-    const ticketRevenue = vehicleTickets.reduce((sum, ticket) => {
-      const year = getYear(ticket?.ticket_date || ticket?.issued_at || ticket?.created_at);
-      return year === selectedYearNumber ? sum + Number(ticket?.ticket_fee || 0) : sum;
-    }, 0);
-
-    return dockingRevenue + banyeraRevenue + ticketRevenue;
-  }, [data, selectedYearlyTargetYear]);
+  const yearlyRevenue = useMemo(
+    () => getTransactionRevenueByPeriod(data ?? {}, selectedYearlyTargetYear).total,
+    [data, selectedYearlyTargetYear],
+  );
   const yearlyTargetProgress = yearlyTarget > 0 ? (yearlyRevenue / yearlyTarget) * 100 : 0;
   const yearlyTargetFill = Math.min(Math.max(yearlyTargetProgress, 0), 100);
   const isFirstTargetMonth = selectedTargetMonthIndex <= 0;
@@ -1534,105 +1478,12 @@ const Dashboard = () => {
     [],
   );
 
-  const billsChartData = useMemo(() => {
-    if (totalBills > 0) return billsStatus;
-    return [{ key: "empty", name: "No Bills", value: 1, color: "#e5e7eb" }];
-  }, [billsStatus, totalBills]);
-
-  const billsDonutSeries = useMemo(
-    () => billsChartData.map((item) => item.value),
-    [billsChartData],
-  );
-
-  const billsDonutOptions = useMemo(
-    () => ({
-      chart: {
-        type: "donut",
-        sparkline: { enabled: true },
-      },
-      labels: billsChartData.map((item) => item.name),
-      colors: billsChartData.map((item) => item.color),
-      dataLabels: { enabled: false },
-      legend: { display: "none", show: false },
-      tooltip: { enabled: false },
-      stroke: { width: 0 },
-      plotOptions: {
-        pie: {
-          donut: {
-            size: "64%",
-          },
-        },
-      },
-      states: {
-        hover: { filter: { type: "none" } },
-        active: { filter: { type: "none" } },
-      },
-    }),
-    [billsChartData],
-  );
-
-  const quarterlyRevenue = useMemo(() => {
-    const quarterConfig = [
-      { key: "q1", name: "Q1", months: [0, 1, 2] },
-      { key: "q2", name: "Q2", months: [3, 4, 5] },
-      { key: "q3", name: "Q3", months: [6, 7, 8] },
-      { key: "q4", name: "Q4", months: [9, 10, 11] },
-    ];
-
-    const items = quarterConfig.map((quarter, index) => ({
-      ...quarter,
-      value: transactionRevenueData.quarters[index],
-    }));
-
-    const total = transactionRevenueData.total;
-
-    return {
-      total,
-      items: items.map((item, index) => ({
-        ...item,
-        color: ["#2563eb", "#5b7ff5", "#8cabff", "#c5d3fc"][index],
-        percent: total > 0 ? Math.round((item.value / total) * 100) : 0,
-      })),
-    };
-  }, [transactionRevenueData]);
-
-  const quarterlyRevenueSeries = useMemo(() => {
-    if (quarterlyRevenue.total > 0) return quarterlyRevenue.items.map((item) => item.value);
-    return [1];
-  }, [quarterlyRevenue]);
-
-  const quarterlyRevenueDonutOptions = useMemo(
-    () => ({
-      chart: {
-        type: "donut",
-        sparkline: { enabled: true },
-      },
-      labels:
-        quarterlyRevenue.total > 0
-          ? quarterlyRevenue.items.map((item) => item.name)
-          : ["No Revenue"],
-      colors:
-        quarterlyRevenue.total > 0
-          ? quarterlyRevenue.items.map((item) => item.color)
-          : ["#e5e7eb"],
-      dataLabels: { enabled: false },
-      legend: { show: false },
-      tooltip: { enabled: false },
-      stroke: { width: 0 },
-      plotOptions: {
-        pie: {
-          donut: {
-            size: "64%",
-          },
-        },
-      },
-      states: {
-        hover: { filter: { type: "none" } },
-        active: { filter: { type: "none" } },
-      },
-    }),
-    [quarterlyRevenue],
-  );
+  const quarterlyRevenueItems = transactionRevenueData.quarters.map((value, index) => ({
+    key: `q${index + 1}`,
+    name: `Q${index + 1}`,
+    color: ["#2563eb", "#5b7ff5", "#8cabff", "#c5d3fc"][index],
+    value,
+  }));
 
   const cashReceivedChartOptions = useMemo(
     () => ({
@@ -3672,16 +3523,22 @@ const Dashboard = () => {
                 </section>
                 <section className="dashboard-card-bill-status rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]">
                   {showInitialSkeleton ? (
-                    <DonutCardSkeleton labelWidth="w-24" itemCount={3} />
+                    <DonutCardSkeleton labelWidth="w-24" />
                   ) : (
-                  <DashboardDonut title="Bill Status" series={billsDonutSeries} options={billsDonutOptions} total={fmtN(totalBills)} items={totalBills > 0 ? billsStatusWithPercent : billsStatus.map((item) => ({ ...item, percent: 0 }))} />
+                    <DashboardDonut title="Bill Status" items={billsStatus} emptyLabel="No Bills" />
                   )}
                 </section>
                 <section className="dashboard-card-revenue-quarter rounded-[10px] border border-slate-200 bg-white p-5 min-w-0 h-full min-h-[360px]">
                   {showInitialSkeleton ? (
                     <DonutCardSkeleton labelWidth="w-36" />
                   ) : (
-                  <DashboardDonut title="Revenue Per Quarter" series={quarterlyRevenueSeries} options={quarterlyRevenueDonutOptions} total={`${PESO}${fmtCompactMoney(quarterlyRevenue.total)}`} items={quarterlyRevenue.items} percentages />
+                    <DashboardDonut
+                      title="Revenue Per Quarter"
+                      items={quarterlyRevenueItems}
+                      emptyLabel="No Revenue"
+                      formatValue={(value) => `${PESO}${fmt(value)}`}
+                      formatLabel={(value) => `${PESO}${fmtCompactMoney(value)}`}
+                    />
                   )}
                 </section>
               </div>

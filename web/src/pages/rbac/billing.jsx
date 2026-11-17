@@ -4209,23 +4209,19 @@ const SuperBilling = () => {
                               ))}
                             </tr>
                           ))
-                        ) : paymentRecordsQuery.isError ? (
+                        ) : paymentRecordsQuery.isLoadingError ? (
                           <tr>
-                            <td colSpan={isHeadViewOnly ? 8 : 9} className="px-4 py-10 text-center">
-                              <div className="flex flex-col items-center gap-3">
-                                <IoAlertCircleOutline className="text-[32px] text-red-400" />
-                                <p className="m-0 text-[13px] font-normal text-red-500">
-                                  Unable to load payment records.
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => paymentRecordsQuery.refetch()}
-                                  className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-[#1a1f36] hover:bg-gray-50"
-                                  style={{ fontFamily: FONT }}
-                                >
-                                  Retry
-                                </button>
-                              </div>
+                            <td colSpan={isHeadViewOnly ? 8 : 9} className="px-4 py-8 text-center">
+                              <p className="m-0 text-[13px] text-red-500">
+                                Unable to load payment records.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => paymentRecordsQuery.refetch()}
+                                className="mt-3 rounded-[10px] border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-[#1a1f36]"
+                              >
+                                Retry
+                              </button>
                             </td>
                           </tr>
                         ) : showPaymentRecordsEmptyState ? (
